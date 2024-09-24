@@ -1,0 +1,932 @@
+\documentclass[10pt, a4paper, english]{article}\usepackage[]{graphicx}\usepackage[dvipsnames]{xcolor}
+% maxwidth is the original width if it is less than linewidth
+% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+\let\hlipl\hlkwb
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+%typesetting
+\usepackage[margin = 1in]{geometry} % margins
+\usepackage[T1]{fontenc} % font encoding
+\usepackage{babel} %enables typesetting for multiple languages
+\usepackage{parskip} %new lines
+\usepackage{graphicx} 
+\usepackage{float}
+\floatplacement{figure}{H} %when printing tables, include  table.position="H"
+\usepackage{bm}
+\usepackage{amsmath}
+
+\usepackage[dvipsnames]{xcolor} % more colors
+
+\usepackage[colorlinks]{hyperref}
+
+
+ %clickable table of contents from hyperref
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+\usepackage[colorinlistoftodos]{todonotes}
+
+
+\title{Machine Learning 2ST129 26605 HT2023
+ Assignment 2 }
+\author{Anonymous Student}
+\date{\today}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+
+
+
+
+
+\section*{General Information}
+\begin{itemize}
+\item Time used for reading: 3 hours
+\item Time used for basic assignment: 20 hours
+\item Time used for extra assignment 8 hours
+\item Good with lab: Very practical. Now i feel like i got a better understanding of how decision trees and randomforests work.
+\item Things to improve in the lab: Maybe more code in the code sketch or more hints on how to handle odd situations that can arise. 
+I think that roughly half of the time went only to debug things, for example smaller problems like handling ties, to larger problems where for example I could get correct results in the task 1, but the functions would not work for the bootstrapped data sets because the tree\_split would just \texttt{next} all iterations and you could end up in a infinite while loop or get different errors.  Though more hints were added later (like the tie), I just felt that I understood the concept of how to do things but got stuck on debugging things. Also I did not understand the hint in task 3.3 to look at figure 15.1 in the hastie et al; since that plot was about the test error for different number of trees for bagging, RF, and Gradient boosting but the task only ask you to present the RMSE. 
+
+\end{itemize}
+
+
+
+\section{Task 1: decision trees}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(uuml)}
+\hlkwd{library}\hlstd{(tidyverse)}
+
+ \hlkwd{data}\hlstd{(}\hlstr{"Hitters"}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsection{1.1 test set}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{# Remove NA values}
+\hlstd{Hitters} \hlkwb{<-} \hlstd{Hitters[}\hlkwd{complete.cases}\hlstd{(Hitters),]}
+\hlcom{# Create test and training set}
+\hlstd{X_test} \hlkwb{<-} \hlkwd{as.matrix}\hlstd{(Hitters[}\hlnum{1}\hlopt{:}\hlnum{30}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)])}
+\hlstd{y_test} \hlkwb{<-} \hlstd{Hitters[}\hlnum{1}\hlopt{:}\hlnum{30}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\hlstd{X_train} \hlkwb{<-} \hlkwd{as.matrix}\hlstd{(Hitters[}\hlnum{31}\hlopt{:}\hlkwd{nrow}\hlstd{(Hitters),} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)])}
+\hlstd{y_train} \hlkwb{<-} \hlstd{Hitters[}\hlnum{31}\hlopt{:}\hlkwd{nrow}\hlstd{(Hitters),} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\subsection{1.2 tree split}
+Now we want to implement a function to split observations binary greedily.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{SS_func} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y_vec}\hlstd{,} \hlkwc{y_bar}\hlstd{)\{}
+  \hlstd{Sum_square} \hlkwb{<-} \hlkwd{sum}\hlstd{((y_vec} \hlopt{-} \hlstd{y_bar)}\hlopt{^}\hlnum{2}\hlstd{)}
+  \hlkwd{return}\hlstd{(Sum_square)}
+\hlstd{\}}
+
+\hlstd{assertions} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,}\hlkwc{y}\hlstd{,}\hlkwc{l}\hlstd{)\{}
+  \hlstd{checkmate}\hlopt{::}\hlkwd{assert_matrix}\hlstd{(X)}
+  \hlstd{checkmate}\hlopt{::}\hlkwd{assert_numeric}\hlstd{(y,} \hlkwc{len} \hlstd{=} \hlkwd{nrow}\hlstd{(X))}
+  \hlstd{checkmate}\hlopt{::}\hlkwd{assert_int}\hlstd{(l)}
+\hlstd{\}}
+
+
+\hlcom{#' function to split observations}
+\hlcom{#' @param X Design Matrix}
+\hlcom{#' @param y variable}
+\hlcom{#' @param l leaf size. Minimum 1}
+\hlcom{#'}
+\hlstd{tree_split} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,} \hlkwc{y}\hlstd{,} \hlkwc{l}\hlstd{)\{}
+\hlkwd{assertions}\hlstd{(}\hlkwc{X}\hlstd{=X,}\hlkwc{y}\hlstd{=y,}\hlkwc{l}\hlstd{=l)}
+
+  \hlstd{SS} \hlkwb{<<-} \hlkwd{matrix}\hlstd{(}\hlnum{Inf}\hlstd{,} \hlkwc{nrow} \hlstd{=} \hlkwd{nrow}\hlstd{(X),} \hlkwc{ncol} \hlstd{=} \hlkwd{ncol}\hlstd{(X))}
+
+  \hlkwa{for} \hlstd{(j} \hlkwa{in} \hlnum{1}\hlopt{:}\hlkwd{ncol}\hlstd{(X)) \{}
+    \hlkwa{for} \hlstd{(k} \hlkwa{in} \hlnum{1}\hlopt{:}\hlkwd{nrow}\hlstd{(X)) \{}
+      \hlstd{s} \hlkwb{<-} \hlstd{X[k, j]}  \hlcom{# Split point}
+      \hlstd{R1} \hlkwb{<-} \hlkwd{which}\hlstd{(X[, j]} \hlopt{<=} \hlstd{s)}
+      \hlstd{R2} \hlkwb{<-} \hlkwd{which}\hlstd{(X[, j]} \hlopt{>} \hlstd{s)}
+
+      \hlcom{# Handle if R1 or R2 is smaller than the leaf size l}
+      \hlkwa{if} \hlstd{(}\hlkwd{length}\hlstd{(R1)} \hlopt{<} \hlstd{l} \hlopt{||} \hlkwd{length}\hlstd{(R2)} \hlopt{<} \hlstd{l)} \hlkwa{next}
+        \hlstd{c1} \hlkwb{<-} \hlkwd{mean}\hlstd{(y[R1])}
+        \hlcom{# Compute c2}
+        \hlstd{c2} \hlkwb{<-} \hlkwd{mean}\hlstd{(y[R2])}
+        \hlcom{# Compute the SS}
+        \hlstd{SS[k, j]} \hlkwb{<-} \hlkwd{SS_func}\hlstd{(y[R1], c1)} \hlopt{+} \hlkwd{SS_func}\hlstd{(y[R2],c2)}
+      \hlstd{\}}
+    \hlstd{\}}
+
+\hlcom{# The final results for the min SS}
+ \hlstd{min_SS} \hlkwb{<-} \hlkwd{min}\hlstd{(SS)}
+ \hlkwa{if}\hlstd{(min_SS} \hlopt{==} \hlnum{Inf}\hlstd{) \{}
+   \hlkwd{return}\hlstd{(}\hlkwa{NULL}\hlstd{)}
+ \hlstd{\}} \hlcom{# in case it cannot find any split such that both regions are > l}
+ \hlcom{#example n=15, l = 5, but it cannot split it into two regions such that both}
+ \hlcom{# regions have n >5, then it would just next all iterations and SS = inf}
+
+ \hlstd{index} \hlkwb{<-} \hlkwd{which}\hlstd{(SS} \hlopt{==} \hlstd{min_SS,} \hlkwc{arr.ind} \hlstd{=} \hlnum{TRUE}\hlstd{)[}\hlnum{1}\hlstd{,]}
+ \hlcom{#in case of ties,  index the first row}
+  \hlstd{k} \hlkwb{<-} \hlstd{index[}\hlnum{1}\hlstd{]}
+  \hlstd{j} \hlkwb{<-} \hlstd{index[}\hlnum{2}\hlstd{]} \hlcom{#which column was used for the split-point}
+  \hlstd{s} \hlkwb{<-} \hlstd{X[k,j]}\hlcom{# What value of X was used as the split-point}
+  \hlstd{R1} \hlkwb{<-} \hlkwd{which}\hlstd{(X[,j]} \hlopt{<=} \hlstd{s)}
+  \hlstd{R2} \hlkwb{<-} \hlkwd{which}\hlstd{(X[,j]} \hlopt{>} \hlstd{s)}
+
+  \hlstd{result} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{j}\hlstd{=j,} \hlkwc{s} \hlstd{= s,}
+                 \hlkwc{R1} \hlstd{= R1,} \hlkwc{R2} \hlstd{= R2,}  \hlkwc{SS} \hlstd{= min_SS)}
+
+  \hlkwd{return}\hlstd{(result)}
+  \hlstd{\}}
+
+\hlstd{X_check} \hlkwb{<-} \hlkwd{as.matrix}\hlstd{(Hitters[}\hlnum{31}\hlopt{:} \hlnum{50}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)])}
+\hlstd{y_check} \hlkwb{<-} \hlstd{Hitters[}\hlnum{31}\hlopt{:} \hlnum{50}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\hlcom{# These are the names of the players we look at }
+\hlkwd{rownames}\hlstd{(Hitters)[}\hlnum{31}\hlopt{:} \hlnum{50}\hlstd{]}
+\end{alltt}
+\begin{verbatim}
+ [1] "-Bob Melvin"       "-BillyJo Robidoux" "-Bill Schroeder"  
+ [4] "-Chris Bando"      "-Chris Brown"      "-Carmen Castillo" 
+ [7] "-Chili Davis"      "-Carlton Fisk"     "-Curt Ford"       
+[10] "-Carney Lansford"  "-Chet Lemon"       "-Candy Maldonado" 
+[13] "-Carmelo Martinez" "-Craig Reynolds"   "-Cal Ripken"      
+[16] "-Cory Snyder"      "-Chris Speier"     "-Curt Wilkerson"  
+[19] "-Dave Anderson"    "-Don Baylor"      
+\end{verbatim}
+\begin{alltt}
+\hlkwd{tree_split}\hlstd{(X_check, y_check,} \hlkwc{l} \hlstd{=} \hlnum{5}\hlstd{)}
+\end{alltt}
+\begin{verbatim}
+$j
+col 
+  1 
+
+$s
+[1] 5
+
+$R1
+      -Bob Melvin -BillyJo Robidoux   -Bill Schroeder      -Chris Brown 
+                1                 2                 3                 5 
+ -Carmen Castillo        -Curt Ford -Carmelo Martinez      -Cory Snyder 
+                6                 9                13                16 
+  -Curt Wilkerson    -Dave Anderson 
+               18                19 
+
+$R2
+    -Chris Bando     -Chili Davis    -Carlton Fisk -Carney Lansford 
+               4                7                8               10 
+     -Chet Lemon -Candy Maldonado  -Craig Reynolds      -Cal Ripken 
+              11               12               14               15 
+   -Chris Speier      -Don Baylor 
+              17               20 
+
+$SS
+[1] 1346633
+\end{verbatim}
+\begin{alltt}
+\hlkwd{tree_split}\hlstd{(X_check, y_check,} \hlkwc{l} \hlstd{=} \hlnum{1}\hlstd{)}
+\end{alltt}
+\begin{verbatim}
+$j
+col 
+  2 
+
+$s
+[1] 132
+
+$R1
+      -Bob Melvin -BillyJo Robidoux   -Bill Schroeder      -Chris Bando 
+                1                 2                 3                 4 
+     -Chris Brown  -Carmen Castillo     -Carlton Fisk        -Curt Ford 
+                5                 6                 8                 9 
+      -Chet Lemon  -Candy Maldonado -Carmelo Martinez   -Craig Reynolds 
+               11                12                13                14 
+     -Cory Snyder     -Chris Speier   -Curt Wilkerson    -Dave Anderson 
+               16                17                18                19 
+
+$R2
+    -Chili Davis -Carney Lansford      -Cal Ripken      -Don Baylor 
+               7               10               15               20 
+
+$SS
+[1] 904383.4
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+\subsection{1.3-1.4}
+Based on the whole training set, the results are:
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{first_train_split} \hlkwb{<-}\hlkwd{tree_split}\hlstd{(X_train, y_train,} \hlkwc{l} \hlstd{=} \hlnum{5}\hlstd{)}
+\hlstd{first_train_split}\hlopt{$}\hlstd{j}
+\end{alltt}
+\begin{verbatim}
+col 
+  1 
+\end{verbatim}
+\begin{alltt}
+\hlstd{first_train_split}\hlopt{$}\hlstd{s}
+\end{alltt}
+\begin{verbatim}
+[1] 4
+\end{verbatim}
+\begin{alltt}
+\hlstd{first_train_split}\hlopt{$}\hlstd{SS}
+\end{alltt}
+\begin{verbatim}
+[1] 38464163
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+The split is for col 1, or the variable Years with the value of 4. 
+The sum of squares is 38464163
+
+\subsection{1.5 grow tree}
+Now we want to use the function \texttt{tree\_split()} to create a function \texttt{grow\_tree()}. This is done by first creating two helper functions \texttt{grow\_node} which uses the   \texttt{tree\_split} function to grow a node and return the results in a list, as well as the function \texttt{gamma\_leaf} which computes the $\gamma$-value and returns the results in a list as well. This is just do make the \texttt{grow\_tree()} function more readable. 
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#' function to grow the tree nodes , for the first if statement in grow_tree}
+\hlstd{grow_node} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,} \hlkwc{y}\hlstd{,} \hlkwc{l}\hlstd{,} \hlkwc{S_m}\hlstd{,} \hlkwc{R_i} \hlstd{)\{}
+     \hlstd{new_split} \hlkwb{<-} \hlkwd{tree_split}\hlstd{(X[S_m[[}\hlnum{1}\hlstd{]],,} \hlkwc{drop}\hlstd{=}\hlnum{FALSE}\hlstd{], y[S_m[[}\hlnum{1}\hlstd{]]], l)}
+     \hlkwa{if}\hlstd{(}\hlkwd{is.null}\hlstd{(new_split))\{}
+       \hlkwd{return}\hlstd{(}\hlkwa{NULL}\hlstd{)} \hlcom{#as before, in case it cannot find any splits and}
+       \hlcom{#the preallocated SS==Inf}
+       \hlstd{\}}
+      \hlstd{new_results} \hlkwb{<-} \hlkwd{data.frame}\hlstd{(}
+        \hlkwc{j} \hlstd{= new_split}\hlopt{$}\hlstd{j,}
+        \hlkwc{s} \hlstd{= new_split}\hlopt{$}\hlstd{s,}
+        \hlkwc{R1_i} \hlstd{= R_i,}
+        \hlkwc{R2_i} \hlstd{= R_i}\hlopt{+}\hlnum{1}\hlstd{,}
+        \hlkwc{gamma} \hlstd{=} \hlnum{NA}
+      \hlstd{)}
+      \hlkwd{return}\hlstd{(}\hlkwd{list}\hlstd{(new_results, new_split}\hlopt{$}\hlstd{R1, new_split}\hlopt{$}\hlstd{R2))}
+\hlstd{\}}
+\hlcom{#' function to calculate the gamma value. The else statement in grow_tree}
+\hlstd{gamma_leaf} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{S_m}\hlstd{)\{}
+  \hlstd{gamma} \hlkwb{<-} \hlkwd{mean}\hlstd{(y[S_m[[}\hlnum{1}\hlstd{]]])}
+
+  \hlstd{new_results} \hlkwb{<-} \hlkwd{data.frame}\hlstd{(}
+        \hlkwc{j} \hlstd{=} \hlnum{NA}\hlstd{,}
+        \hlkwc{s} \hlstd{=} \hlnum{NA}\hlstd{,}
+        \hlkwc{R1_i} \hlstd{=} \hlnum{NA}\hlstd{,}
+        \hlkwc{R2_i} \hlstd{=} \hlnum{NA}\hlstd{,}
+        \hlkwc{gamma} \hlstd{= gamma}
+      \hlstd{)}
+  \hlkwd{return}\hlstd{(new_results)}
+\hlstd{\}}
+
+\hlstd{grow_tree} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,} \hlkwc{y}\hlstd{,} \hlkwc{l}\hlstd{) \{}
+  \hlkwd{assertions}\hlstd{(}\hlkwc{X} \hlstd{= X,} \hlkwc{y} \hlstd{= y,} \hlkwc{l} \hlstd{= l)}
+
+  \hlcom{# Initialize the tree with the first split}
+  \hlstd{init} \hlkwb{<-} \hlkwd{tree_split}\hlstd{(X, y, l)}
+
+  \hlcom{# Initialize S_m to store the set of observation indices}
+  \hlstd{S_m} \hlkwb{<-} \hlkwd{list}\hlstd{(init}\hlopt{$}\hlstd{R1, init}\hlopt{$}\hlstd{R2)}
+  \hlstd{R_i} \hlkwb{<-} \hlnum{2}
+  \hlcom{# Initialize results data frame}
+  \hlstd{results} \hlkwb{<-} \hlkwd{data.frame}\hlstd{(}\hlkwc{j} \hlstd{= init}\hlopt{$}\hlstd{j,} \hlkwc{s} \hlstd{= init}\hlopt{$}\hlstd{s,}
+                        \hlkwc{R1_i} \hlstd{= R_i,} \hlkwc{R2_i} \hlstd{= R_i}\hlopt{+}\hlnum{1}\hlstd{,} \hlkwc{gamma} \hlstd{=} \hlnum{NA}\hlstd{)}
+  \hlcom{# Main loop to grow the tree}
+
+  \hlkwa{while} \hlstd{(}\hlkwd{length}\hlstd{(S_m)} \hlopt{>} \hlnum{0}\hlstd{) \{}
+    \hlcom{# As long as not all parts of the tree have been handled,}
+    \hlcom{# we will either split or compute gamma}
+    \hlkwa{if} \hlstd{(}\hlkwd{length}\hlstd{(S_m[[}\hlnum{1}\hlstd{]])} \hlopt{>=} \hlnum{2} \hlopt{*} \hlstd{l) \{}
+      \hlstd{R_i} \hlkwb{<-} \hlstd{R_i} \hlopt{+} \hlnum{2}
+      \hlstd{new_split} \hlkwb{<-} \hlkwd{grow_node}\hlstd{(}\hlkwc{X}\hlstd{=X,} \hlkwc{y}\hlstd{=y,} \hlkwc{l}\hlstd{=l,}
+                             \hlkwc{S_m} \hlstd{= S_m,} \hlkwc{R_i} \hlstd{= R_i)}
+
+
+    \hlkwa{if}\hlstd{(}\hlkwd{is.null}\hlstd{(new_split))\{} \hlcom{#this is added in case S_m[[1]]) >= 2 * l}
+     \hlcom{# but the grow_node (tree split() cannot make any split of the observations }
+     \hlcom{# such that both regions > l. Then we treat it as a leaf)}
+    \hlstd{leaf} \hlkwb{<-} \hlkwd{gamma_leaf}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{S_m} \hlstd{= S_m)}
+    \hlstd{results} \hlkwb{<-} \hlkwd{rbind}\hlstd{(results, leaf)}
+    \hlstd{R_i} \hlkwb{<-} \hlstd{R_i} \hlopt{-} \hlnum{2}
+    \hlstd{\}}
+
+    \hlkwa{else}\hlstd{\{}
+       \hlstd{results} \hlkwb{<-} \hlkwd{rbind}\hlstd{(results,new_split[[}\hlnum{1}\hlstd{]])}
+         \hlstd{S_m} \hlkwb{<-} \hlkwd{c}\hlstd{(S_m,} \hlkwd{list}\hlstd{(S_m[[}\hlnum{1}\hlstd{]][new_split[[}\hlnum{2}\hlstd{]]], S_m[[}\hlnum{1}\hlstd{]][new_split[[}\hlnum{3}\hlstd{]]]))}
+    \hlstd{\}}
+  \hlcom{# Add R1 and R2 to S_m}
+    \hlcom{#the long indexes is to make sure we index on the correct value for the whole}
+   \hlcom{#data X, not the ones used for the current split only}
+
+    \hlstd{S_m} \hlkwb{<-} \hlstd{S_m[}\hlopt{-}\hlnum{1}\hlstd{]}
+
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+    \hlcom{# Compute gamma for leaf node}
+    \hlstd{leaf} \hlkwb{<-} \hlkwd{gamma_leaf}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{S_m} \hlstd{= S_m)}
+    \hlstd{results} \hlkwb{<-} \hlkwd{rbind}\hlstd{(results, leaf)}
+    \hlstd{S_m} \hlkwb{<-} \hlstd{S_m[}\hlopt{-}\hlnum{1}\hlstd{]}
+    \hlstd{\}}
+  \hlstd{\}}
+  \hlkwd{rownames}\hlstd{(results)} \hlkwb{<-} \hlnum{1}\hlopt{:}\hlkwd{nrow}\hlstd{(results)}
+  \hlkwd{return}\hlstd{(results)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+ \hlstd{tr} \hlkwb{<-} \hlkwd{grow_tree}\hlstd{(}\hlkwd{as.matrix}\hlstd{(X_check), y_check,} \hlkwc{l}\hlstd{=} \hlnum{5}\hlstd{)}
+\hlkwd{print}\hlstd{(tr)}
+\end{alltt}
+\begin{verbatim}
+   j   s R1_i R2_i    gamma
+1  1   5    2    3       NA
+2  1   3    4    5       NA
+3  2 101    6    7       NA
+4 NA  NA   NA   NA 106.5000
+5 NA  NA   NA   NA 244.5000
+6 NA  NA   NA   NA 509.3334
+7 NA  NA   NA   NA 946.0000
+\end{verbatim}
+\begin{alltt}
+  \hlkwd{grow_tree}\hlstd{(}\hlkwd{as.matrix}\hlstd{(X_check), y_check,} \hlkwc{l}\hlstd{=} \hlnum{1}\hlstd{)}
+\end{alltt}
+\begin{verbatim}
+    j   s R1_i R2_i    gamma
+1   2 132    2    3       NA
+2   1   5    4    5       NA
+3   2 146    6    7       NA
+4   1   2    8    9       NA
+5   1  16   10   11       NA
+6   1   6   12   13       NA
+7   1   6   14   15       NA
+8   2  53   16   17       NA
+9   2  56   18   19       NA
+10  2  78   20   21       NA
+11 NA  NA   NA   NA  875.000
+12 NA  NA   NA   NA  815.000
+13 NA  NA   NA   NA  950.000
+14 NA  NA   NA   NA 1350.000
+15 NA  NA   NA   NA 1200.000
+16  2  41   22   23       NA
+17  1   1   24   25       NA
+18  2  46   26   27       NA
+19  1   3   28   29       NA
+20  2  68   30   31       NA
+21  1   6   32   33       NA
+22 NA  NA   NA   NA   67.500
+23 NA  NA   NA   NA   70.000
+24 NA  NA   NA   NA   90.000
+25 NA  NA   NA   NA   90.000
+26 NA  NA   NA   NA  180.000
+27  2  53   34   35       NA
+28 NA  NA   NA   NA  215.000
+29  1   4   36   37       NA
+30  1   6   38   39       NA
+31 NA  NA   NA   NA  416.667
+32 NA  NA   NA   NA  415.000
+33 NA  NA   NA   NA  675.000
+34 NA  NA   NA   NA  225.000
+35 NA  NA   NA   NA  230.000
+36 NA  NA   NA   NA  340.000
+37 NA  NA   NA   NA  247.500
+38 NA  NA   NA   NA  305.000
+39 NA  NA   NA   NA  275.000
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+
+
+
+\subsection{1.6}
+Here we implement a function to predict the value given observations. The first function \texttt{check\_leaf()} works for a single observation as well as a given value for the row of the whole tree. It works by checking whether the observation is in a leaf containing a gamma value, which corresponds to the predicted value, and then returns \texttt{TRUE}. Else it means that the observation is currently in a node and hence it checks which region to assign the observation to next (the new row number). This is done iteratively in the \texttt{predict\_with\_tree()} function such that it iterates over all the different rows until it is assigned to a leaf.  
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#' function to check whether a single observation is in a leaf or not given the }
+\hlcom{#' row of the tree to search in.}
+\hlcom{#' if not, then it returns the next region to search, else returns TRUE}
+\hlstd{check_leaf} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{x}\hlstd{,} \hlkwc{tree}\hlstd{,} \hlkwc{n_row}\hlstd{)\{}
+  \hlstd{new_row} \hlkwb{<-} \hlstd{n_row}
+  \hlstd{gamma_na} \hlkwb{<-} \hlkwd{is.na}\hlstd{(tree[n_row,]}\hlopt{$}\hlstd{gamma)}
+  \hlkwa{if} \hlstd{(}\hlopt{!}\hlstd{gamma_na)\{}
+    \hlkwd{return}\hlstd{(} \hlnum{TRUE}\hlstd{)}
+  \hlstd{\}}
+
+  \hlstd{variable_to_split} \hlkwb{<-} \hlstd{tree}\hlopt{$}\hlstd{j[n_row]}
+  \hlstd{value_split} \hlkwb{<-} \hlstd{tree}\hlopt{$}\hlstd{s[n_row]}
+
+  \hlkwa{if} \hlstd{(x[variable_to_split]} \hlopt{<=} \hlstd{value_split)\{}
+    \hlstd{new_row} \hlkwb{<-} \hlstd{tree}\hlopt{$}\hlstd{R1_i[n_row]}
+  \hlstd{\}}
+    \hlkwa{else} \hlstd{new_row} \hlkwb{<-} \hlstd{tree}\hlopt{$}\hlstd{R2_i[n_row]}
+  \hlkwd{return}\hlstd{(new_row)}
+\hlstd{\}}
+
+
+\hlstd{predict_with_tree} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{new_data}\hlstd{,} \hlkwc{tree}\hlstd{)\{}
+  \hlstd{checkmate}\hlopt{::}\hlkwd{assert_matrix}\hlstd{(new_data)}
+  \hlstd{predictions} \hlkwb{<-} \hlkwd{numeric}\hlstd{(}\hlkwd{nrow}\hlstd{(new_data))}
+
+  \hlkwa{for}\hlstd{(i} \hlkwa{in} \hlnum{1}\hlopt{:}\hlkwd{length}\hlstd{(predictions))\{}
+    \hlstd{row}\hlkwb{=}\hlnum{1}
+    \hlstd{not_in_leaf} \hlkwb{<-} \hlnum{TRUE}
+
+    \hlkwa{while}\hlstd{(not_in_leaf)\{}
+      \hlstd{iter_res} \hlkwb{<-} \hlkwd{check_leaf}\hlstd{(}\hlkwc{x} \hlstd{= new_data[i,],} \hlkwc{tree}\hlstd{=tree,} \hlkwc{n_row}\hlstd{=row)}
+      \hlkwa{if} \hlstd{(iter_res} \hlopt{==}\hlnum{TRUE}\hlstd{)\{}
+        \hlstd{not_in_leaf} \hlkwb{<-} \hlnum{FALSE}
+        \hlstd{predicted_value} \hlkwb{<-} \hlstd{tree[row,]}\hlopt{$}\hlstd{gamma}
+      \hlstd{\}}
+      \hlkwa{else} \hlstd{row} \hlkwb{<-} \hlstd{iter_res}
+    \hlstd{\}}
+  \hlstd{predictions[i]} \hlkwb{<-} \hlstd{predicted_value}
+  \hlstd{\}}
+  \hlkwd{return}\hlstd{(predictions)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{X_new} \hlkwb{<-} \hlkwd{as.matrix}\hlstd{(Hitters[}\hlnum{51}\hlopt{:}\hlnum{52}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)])}
+
+\hlstd{y_new} \hlkwb{<-} \hlstd{Hitters[}\hlnum{51}\hlopt{:}\hlnum{52}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\hlkwd{predict_with_tree}\hlstd{(X_new, tr)}
+\end{alltt}
+\begin{verbatim}
+[1] 106.5 244.5
+\end{verbatim}
+\begin{alltt}
+\hlkwd{rmse}\hlstd{(}\hlkwc{x}\hlstd{=}\hlkwd{c}\hlstd{(}\hlnum{75}\hlstd{,} \hlnum{105}\hlstd{,} \hlnum{33}\hlstd{),} \hlkwc{y} \hlstd{=} \hlkwd{c}\hlstd{(}\hlnum{102}\hlstd{,} \hlnum{99}\hlstd{,} \hlnum{43}\hlstd{))}
+\end{alltt}
+\begin{verbatim}
+[1] 16.98038
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+
+
+Now to test compute the root mean square error for the test set predictions based on the full training set tree.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{full_train_tree} \hlkwb{<-} \hlkwd{grow_tree}\hlstd{(}\hlkwc{X}\hlstd{=X_train,} \hlkwc{y} \hlstd{= y_train,} \hlkwc{l} \hlstd{=} \hlnum{5}\hlstd{)}
+\hlstd{test_predictions} \hlkwb{<-} \hlkwd{predict_with_tree}\hlstd{(X_test,} \hlkwc{tree}\hlstd{= full_train_tree)}
+\hlkwd{rmse}\hlstd{(y_test, test_predictions)} \hlopt{%>%}
+  \hlkwd{print}\hlstd{()}
+\end{alltt}
+\begin{verbatim}
+[1] 322.2891
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+The RMSE is 322
+
+\section{Task 2}
+\subsection{2.1}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(randomForest)}
+\hlkwd{data}\hlstd{(}\hlstr{"Hitters"}\hlstd{)}
+\hlstd{Hitters} \hlkwb{<-} \hlstd{Hitters[}\hlkwd{complete.cases}\hlstd{(Hitters),]}
+\hlstd{dat_test} \hlkwb{<-} \hlstd{Hitters[}\hlnum{1}\hlopt{:}\hlnum{30}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{,} \hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)]}
+\hlstd{dat_train} \hlkwb{<-} \hlstd{Hitters[}\hlnum{31}\hlopt{:}\hlkwd{nrow}\hlstd{(Hitters),} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{,} \hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)]}
+\hlstd{Hitters.rf} \hlkwb{<-} \hlkwd{randomForest}\hlstd{(Salary} \hlopt{~} \hlstd{Years} \hlopt{+} \hlstd{Hits,} \hlkwc{data}\hlstd{=dat_train,} \hlkwc{mtry}\hlstd{=}\hlnum{1}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+\subsection{2.2}
+Looking at the fitted random forest model gives the following:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{Hitters.rf}
+\end{alltt}
+\begin{verbatim}
+
+Call:
+ randomForest(formula = Salary ~ Years + Hits, data = dat_train,      mtry = 1) 
+               Type of random forest: regression
+                     Number of trees: 500
+No. of variables tried at each split: 1
+
+          Mean of squared residuals: 141924.5
+                    % Var explained: 34.67
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+The number of variables used at teach split is 1. This is because the default setting is approximately $p/3$ in the regression setting and where p is the number of variables. If we want we could just change it by setting the argument $\texttt{mtry}$ to something else. Or well, we do not really have that much of a choice due to our limited number of variables, but we could do like this if we wanted to use 2 variables per split instead.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{randomForest}\hlstd{(Salary} \hlopt{~} \hlstd{Years} \hlopt{+} \hlstd{Hits,} \hlkwc{data}\hlstd{=dat_train,} \hlkwc{mtry}\hlstd{=}\hlnum{2}\hlstd{)}
+\end{alltt}
+\begin{verbatim}
+
+Call:
+ randomForest(formula = Salary ~ Years + Hits, data = dat_train,      mtry = 2) 
+               Type of random forest: regression
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+          Mean of squared residuals: 154941.7
+                    % Var explained: 28.68
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+\subsection{2.3}
+Now we want to predict on the test set
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{RF_preds} \hlkwb{<-} \hlkwd{predict}\hlstd{(Hitters.rf,} \hlkwc{newdata}\hlstd{=dat_test)}
+\hlkwd{rmse}\hlstd{(}\hlkwc{x} \hlstd{= dat_test}\hlopt{$}\hlstd{Salary,} \hlkwc{y} \hlstd{= RF_preds)}
+\end{alltt}
+\begin{verbatim}
+[1] 238.1639
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+Hence the RMSE is 234.6
+
+\subsection{2.4}
+Now we use xgboost to fit a boosted regression tree.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(xgboost)}
+\hlstd{X_test} \hlkwb{<-} \hlstd{dat_test[,} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)]}
+\hlstd{y_test} \hlkwb{<-} \hlstd{dat_test[,} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\hlstd{X_train} \hlkwb{<-} \hlstd{dat_train[,} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)]}
+\hlstd{y_train} \hlkwb{<-} \hlstd{dat_train[,} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\hlstd{xgb} \hlkwb{<-} \hlkwd{xgboost}\hlstd{(}\hlkwd{as.matrix}\hlstd{(X_train),} \hlkwd{as.matrix}\hlstd{(y_train),} \hlkwc{nrounds} \hlstd{=} \hlnum{200}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{xgb_preds} \hlkwb{<-} \hlkwd{predict}\hlstd{(xgb,} \hlkwc{newdata}\hlstd{=}\hlkwd{as.matrix}\hlstd{(X_test))}
+\hlkwd{rmse}\hlstd{(}\hlkwc{x}\hlstd{= y_test,} \hlkwc{y} \hlstd{= xgb_preds)} \hlopt{%>%}
+  \hlkwd{print}\hlstd{()}
+\end{alltt}
+\begin{verbatim}
+[1] 227.5978
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+This yields a slightly lower root mean square error of 227.6
+
+\section{3}
+\subsection{Bagged trees}
+\subsubsection{3.1.1}
+The way this is implemented here is through a series of functions. First we
+create a \texttt{sample\_func()} which just samples new observations from given data X and y and returns a data frame. Then a \texttt{bootstrap\_func()} which takes an additional parameter \texttt{B} which creates B bootstrapped samples and returns a list, each element a data frame with new observations. Then a function \texttt{grow\_tree\_on\_boot} which is just a wrapper for the previously defined function \texttt{grow\_tree()} but made simpler to use with a data frame instead.
+Then \texttt{train\_bagged\_trees()} which just uses those functions and applies it more general so that it returns a list of bagged trees that have been trained on the bootstrapped samples.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{X_test} \hlkwb{<-} \hlkwd{as.matrix}\hlstd{(Hitters[}\hlnum{1}\hlopt{:}\hlnum{30}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)])}
+\hlstd{y_test} \hlkwb{<-} \hlstd{Hitters[}\hlnum{1}\hlopt{:}\hlnum{30}\hlstd{,} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\hlstd{X_train} \hlkwb{<-} \hlkwd{as.matrix}\hlstd{(Hitters[}\hlnum{31}\hlopt{:}\hlkwd{nrow}\hlstd{(Hitters),} \hlkwd{c}\hlstd{(}\hlstr{"Years"}\hlstd{,} \hlstr{"Hits"}\hlstd{)])}
+\hlstd{y_train} \hlkwb{<-} \hlstd{Hitters[}\hlnum{31}\hlopt{:}\hlkwd{nrow}\hlstd{(Hitters),} \hlkwd{c}\hlstd{(}\hlstr{"Salary"}\hlstd{)]}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#'function to sample new data given covariates X and response y}
+\hlcom{#' @return Note: it returns a dataframe}
+\hlstd{sample_func} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,} \hlkwc{y}\hlstd{) \{}
+  \hlstd{n} \hlkwb{<-} \hlkwd{length}\hlstd{(y)}
+  \hlstd{sampled_rows} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlnum{1}\hlopt{:}\hlstd{n,} \hlkwc{size} \hlstd{= n,} \hlkwc{replace} \hlstd{=} \hlnum{TRUE}\hlstd{)}
+  \hlstd{new_X} \hlkwb{<-} \hlstd{X[sampled_rows, ]}
+  \hlstd{new_y} \hlkwb{<-} \hlstd{y[sampled_rows]}
+
+  \hlcom{# Create a tibble with the same column names as X}
+  \hlstd{new_X} \hlkwb{<-} \hlkwd{as_tibble}\hlstd{(new_X)} \hlopt{%>%}
+    \hlkwd{setNames}\hlstd{(}\hlkwd{colnames}\hlstd{(X))}
+
+  \hlcom{# Combine X and y into a new tibble}
+  \hlstd{new_df} \hlkwb{<-} \hlkwd{bind_cols}\hlstd{(}\hlkwd{tibble}\hlstd{(}\hlkwc{y} \hlstd{= new_y), new_X)}
+
+  \hlkwd{return}\hlstd{(new_df)}
+\hlstd{\}}
+
+\hlcom{#' function to create B number of bootstrapped sets}
+\hlcom{#' @param B number of bootstraps}
+\hlcom{#' @return a list with bootstraped datasets as the elements}
+\hlstd{bootstrap_func} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,}\hlkwc{y}\hlstd{,} \hlkwc{B}\hlstd{)\{}
+
+  \hlstd{bootstrapped_datasets} \hlkwb{<-} \hlkwd{replicate}\hlstd{(B,} \hlkwd{sample_func}\hlstd{(X,y),} \hlkwc{simplify} \hlstd{=} \hlnum{FALSE}\hlstd{)}
+  \hlcom{#returns the bootstrapped sets in a list}
+  \hlkwd{return}\hlstd{(bootstrapped_datasets)}
+\hlstd{\}}
+\hlcom{####}
+
+\hlcom{#just a wrapper function for the grow_tree funcion to specify $y as y argument }
+\hlcom{#and all other variables as the X argument in matrix, which makes it easier to use}
+\hlstd{grow_tree_on_boot} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{dataset}\hlstd{,} \hlkwc{l}\hlstd{) \{}
+    \hlkwd{grow_tree}\hlstd{(}\hlkwc{X} \hlstd{=} \hlkwd{as.matrix}\hlstd{(dataset} \hlopt{%>%} \hlkwd{select}\hlstd{(}\hlopt{-}\hlstd{y)),} \hlkwc{y} \hlstd{= dataset}\hlopt{$}\hlstd{y,} \hlkwc{l} \hlstd{= l)}
+\hlstd{\}}
+
+\hlcom{###}
+
+\hlcom{#' function to create bagged trees based on the bootstrapped datasets}
+\hlcom{#' parameters are the same as before, with l = leaf size}
+\hlcom{#' @return a list with bagged trees}
+\hlcom{#' }
+\hlstd{train_bagged_trees} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,} \hlkwc{y}\hlstd{,} \hlkwc{l}\hlstd{,} \hlkwc{B}\hlstd{)\{}
+  \hlstd{bootstrapped_sets} \hlkwb{<-} \hlkwd{bootstrap_func}\hlstd{(} \hlkwc{X}\hlstd{=X,} \hlkwc{y}\hlstd{=y,} \hlkwc{B}\hlstd{=B)}
+   \hlstd{bagged_trees} \hlkwb{<-} \hlkwd{lapply}\hlstd{(bootstrapped_sets, grow_tree_on_boot,} \hlkwc{l} \hlstd{= l)}
+  \hlkwd{return}\hlstd{(bagged_trees)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+\subsubsection{3.1.2}
+Now we create a function \texttt{predict\_with\_bagged\_trees()} which is basically a wrapper for the previously \texttt{predict\_with\_tree()} but generalized to work on a list of bagged trees.
+
+Then the \texttt{boot\_and\_predict()} function just combines both the \texttt{train\_bagged\_trees()} and \\ \texttt{predict\_with\_bagged\_trees()} functions so that it first creates bagged trees and then predicts in the same function. Then finally, in the \texttt{task\_3.3\_main()} the use is extended to work on multiple values of B.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#' @param bagged_trees returned results from grow_tree_on_boot with }
+\hlcom{#' B number of trees}
+\hlcom{#' @param new_obs new data to predict on with length K}
+\hlcom{#' @return mean predicted values of the trees on new observations}
+
+\hlstd{predict_with_bagged_trees} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{bagged_trees}\hlstd{,} \hlkwc{new_obs}\hlstd{)\{}
+
+  \hlstd{all_tree_preds} \hlkwb{<-} \hlkwd{lapply}\hlstd{(bagged_trees,} \hlkwc{FUN} \hlstd{=} \hlkwa{function}\hlstd{(}\hlkwc{tree}\hlstd{)\{}
+  \hlkwd{predict_with_tree}\hlstd{(}\hlkwc{new_data} \hlstd{= new_obs,} \hlkwc{tree}\hlstd{=tree)}
+\hlstd{\})}
+
+\hlstd{result_matrix} \hlkwb{<-} \hlkwd{do.call}\hlstd{(rbind, all_tree_preds)}
+\hlcom{#matrix where columns are the new observations and rows the predicted value}
+\hlcom{#from each tree}
+
+\hlstd{mean_preds} \hlkwb{<-} \hlkwd{colMeans}\hlstd{(result_matrix)}
+\hlkwd{return}\hlstd{(mean_preds)}
+\hlstd{\}}
+
+
+\hlcom{####}
+
+\hlcom{#' function which combines train_bagged_trees and predict}
+\hlcom{#'  @return RMSE for the predictions}
+\hlstd{boot_and_predict} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X_train}\hlstd{,}\hlkwc{y_train}\hlstd{,}\hlkwc{l}\hlstd{,} \hlkwc{B}\hlstd{,} \hlkwc{X_test}\hlstd{,} \hlkwc{y_test}\hlstd{)\{}
+
+  \hlstd{trees} \hlkwb{<-} \hlkwd{train_bagged_trees}\hlstd{(}\hlkwc{X}\hlstd{=X_train,} \hlkwc{y}\hlstd{=y_train,} \hlkwc{l}\hlstd{=l,} \hlkwc{B}\hlstd{=B)}
+  \hlstd{preds} \hlkwb{<-} \hlkwd{predict_with_bagged_trees}\hlstd{(}\hlkwc{bagged_trees} \hlstd{= trees,} \hlkwc{new_obs}\hlstd{=X_test)}
+  \hlstd{rmse} \hlkwb{<-} \hlstd{uuml}\hlopt{::}\hlkwd{rmse}\hlstd{(}\hlkwc{x}\hlstd{= y_test,} \hlkwc{y}\hlstd{= preds)}
+  \hlkwd{return}\hlstd{(rmse)}
+\hlstd{\}}
+
+
+\hlstd{task_3.3_main} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X_train}\hlstd{,} \hlkwc{y_train}\hlstd{,} \hlkwc{X_test}\hlstd{,} \hlkwc{y_test}\hlstd{,} \hlkwc{l}\hlstd{,} \hlkwc{B}\hlstd{)\{}
+  \hlstd{res}\hlkwb{<-} \hlkwd{sapply}\hlstd{(B,} \hlkwc{FUN} \hlstd{= boot_and_predict,} \hlkwc{X_train}\hlstd{=X_train,} \hlkwc{y_train} \hlstd{= y_train,}
+               \hlkwc{X_test} \hlstd{= X_test,} \hlkwc{y_test} \hlstd{= y_test,} \hlkwc{l}\hlstd{= l)}
+  \hlkwd{return}\hlstd{(res)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{3.1.3}
+Now that we have the functions  the results are: 
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hlstd{(}\hlnum{111}\hlstd{)}
+\hlstd{boot_results} \hlkwb{<-} \hlkwd{task_3.3_main}\hlstd{(}\hlkwc{X_train} \hlstd{= X_train,} \hlkwc{y_train} \hlstd{=  y_train,}
+                              \hlkwc{y_test} \hlstd{= y_test,} \hlkwc{X_test} \hlstd{= X_test,}
+              \hlkwc{l}\hlstd{=} \hlnum{5}\hlstd{,} \hlkwc{B}\hlstd{=} \hlkwd{c}\hlstd{(}\hlnum{1}\hlstd{,}\hlnum{10}\hlstd{,} \hlnum{100}\hlstd{,}\hlnum{500}\hlstd{,} \hlnum{1000}\hlstd{))}
+
+\hlstd{boot_results}
+\end{alltt}
+\begin{verbatim}
+[1] 308.4493 304.7681 282.7706 275.1588 278.9853
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+Hence looking at the results,the RMSE is around 300 for all different values for B. B=1 has the largest value, whereas B=500 and B = 1000 has the lowest. But the difference is not that much
+
+\subsection{3.2 Random Forest}
+\subsubsection{3.2.1}
+Now to implement a random forest function. We can basically reuse the previous functions but with small tweaks. For the \texttt{grow\_tree()} function we just add that it should split the variables at random according to how many we set as the \texttt{m}-argument. Thus the following lines were added at two parts of the code: \begin{verbatim}
+ vars_to_split <- sample(1:n_cols, size=m, replace=FALSE)
+ X_subset <- X[,c(vars_to_split), drop=FALSE]
+ \end{verbatim}
+ and then subsequent changes so that it uses \texttt{X\_subset} instead of the whole X-set instead. 
+ Hence when we call the \texttt{tree\_split()}, (which is itself wrapped with the \texttt{grow\_node()} function) inside the \texttt{grow\_tree()} function, then it will only consider the m randomly selected variables.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{grow_tree_m} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X}\hlstd{,}\hlkwc{y}\hlstd{,}\hlkwc{l}\hlstd{,} \hlkwc{m}\hlstd{) \{}
+  \hlkwd{assertions}\hlstd{(}\hlkwc{X} \hlstd{= X,} \hlkwc{y} \hlstd{= y,} \hlkwc{l} \hlstd{= l)}
+  \hlstd{n_cols} \hlkwb{<-} \hlkwd{ncol}\hlstd{(X)}
+  \hlkwd{stopifnot}\hlstd{(m} \hlopt{<=} \hlstd{n_cols)}
+  \hlcom{#added this for the RF implementation. also inside the while-loop}
+ \hlstd{vars_to_split} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlnum{1}\hlopt{:}\hlstd{n_cols,} \hlkwc{size}\hlstd{=m,} \hlkwc{replace}\hlstd{=}\hlnum{FALSE}\hlstd{)}
+ \hlstd{X_subset} \hlkwb{<-} \hlstd{X[,}\hlkwd{c}\hlstd{(vars_to_split),} \hlkwc{drop}\hlstd{=}\hlnum{FALSE}\hlstd{]}
+  \hlcom{# Initialize the tree with the first split}
+  \hlstd{init} \hlkwb{<-} \hlkwd{tree_split}\hlstd{(X_subset, y, l)}
+
+  \hlcom{# Initialize S_m to store the set of observation indices}
+  \hlstd{S_m} \hlkwb{<-} \hlkwd{list}\hlstd{(init}\hlopt{$}\hlstd{R1, init}\hlopt{$}\hlstd{R2)}
+  \hlstd{R_i} \hlkwb{<-} \hlnum{2}
+  \hlcom{# Initialize results data frame}
+  \hlstd{results} \hlkwb{<-} \hlkwd{data.frame}\hlstd{(}\hlkwc{j} \hlstd{= init}\hlopt{$}\hlstd{j,} \hlkwc{s} \hlstd{= init}\hlopt{$}\hlstd{s,}
+                        \hlkwc{R1_i} \hlstd{= R_i,} \hlkwc{R2_i} \hlstd{= R_i}\hlopt{+}\hlnum{1}\hlstd{,} \hlkwc{gamma} \hlstd{=} \hlnum{NA}\hlstd{)}
+  \hlcom{# Main loop to grow the tree}
+
+  \hlkwa{while} \hlstd{(}\hlkwd{length}\hlstd{(S_m)} \hlopt{>} \hlnum{0}\hlstd{) \{}
+     \hlstd{vars_to_split} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlnum{1}\hlopt{:}\hlstd{n_cols,} \hlkwc{size}\hlstd{=m,} \hlkwc{replace}\hlstd{=}\hlnum{FALSE}\hlstd{)}
+    \hlstd{X_subset} \hlkwb{<-} \hlstd{X[,}\hlkwd{c}\hlstd{(vars_to_split),} \hlkwc{drop}\hlstd{=}\hlnum{FALSE}\hlstd{]}
+    \hlcom{# As long as not all parts of the tree have been handled,}
+    \hlcom{# we will either split or compute gamma}
+    \hlkwa{if} \hlstd{(}\hlkwd{length}\hlstd{(S_m[[}\hlnum{1}\hlstd{]])} \hlopt{>=} \hlnum{2} \hlopt{*} \hlstd{l) \{}
+      \hlstd{R_i} \hlkwb{<-} \hlstd{R_i} \hlopt{+} \hlnum{2}
+      \hlstd{new_split} \hlkwb{<-} \hlkwd{grow_node}\hlstd{(}\hlkwc{X}\hlstd{=X_subset,} \hlkwc{y}\hlstd{=y,} \hlkwc{l}\hlstd{=l,}
+                             \hlkwc{S_m} \hlstd{= S_m,} \hlkwc{R_i} \hlstd{= R_i)}
+
+
+    \hlkwa{if}\hlstd{(}\hlkwd{is.null}\hlstd{(new_split))\{} \hlcom{#this is added in case S_m[[1]]) >= 2 * l}
+     \hlcom{# but the grow_node (tree split() cannot make any split of the observations }
+     \hlcom{# such that both regions > l. Then we treat it as a leaf)}
+    \hlstd{leaf} \hlkwb{<-} \hlkwd{gamma_leaf}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{S_m} \hlstd{= S_m)}
+    \hlstd{results} \hlkwb{<-} \hlkwd{rbind}\hlstd{(results, leaf)}
+    \hlstd{R_i} \hlkwb{<-} \hlstd{R_i} \hlopt{-} \hlnum{2}
+    \hlstd{\}}
+
+    \hlkwa{else}\hlstd{\{}
+       \hlstd{results} \hlkwb{<-} \hlkwd{rbind}\hlstd{(results,new_split[[}\hlnum{1}\hlstd{]])}
+         \hlstd{S_m} \hlkwb{<-} \hlkwd{c}\hlstd{(S_m,} \hlkwd{list}\hlstd{(S_m[[}\hlnum{1}\hlstd{]][new_split[[}\hlnum{2}\hlstd{]]], S_m[[}\hlnum{1}\hlstd{]][new_split[[}\hlnum{3}\hlstd{]]]))}
+    \hlstd{\}}
+  \hlcom{# Add R1 and R2 to S_m}
+    \hlcom{#the long indexes is to make sure we index on the correct value for the whole}
+   \hlcom{#data X, not the ones used for the current split only}
+
+    \hlstd{S_m} \hlkwb{<-} \hlstd{S_m[}\hlopt{-}\hlnum{1}\hlstd{]}
+
+
+    \hlstd{\}} \hlkwa{else} \hlstd{\{}
+    \hlcom{# Compute gamma for leaf node}
+    \hlstd{leaf} \hlkwb{<-} \hlkwd{gamma_leaf}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{S_m} \hlstd{= S_m)}
+    \hlstd{results} \hlkwb{<-} \hlkwd{rbind}\hlstd{(results, leaf)}
+    \hlstd{S_m} \hlkwb{<-} \hlstd{S_m[}\hlopt{-}\hlnum{1}\hlstd{]}
+    \hlstd{\}}
+  \hlstd{\}}
+  \hlkwd{rownames}\hlstd{(results)} \hlkwb{<-} \hlnum{1}\hlopt{:}\hlkwd{nrow}\hlstd{(results)}
+  \hlkwd{return}\hlstd{(results)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{3.2.2}
+Next we just update the \texttt{grow\_tree\_on\_boot()} function to act as a wrapper for \texttt{ grow\_tree\_m()} instead. The reason this function exists is basically since the returned results from the bootstrap function is a data frame, so \texttt{grow\_tree\_on\_boot()} just splits it into the y and X parts for the \texttt{grow\_tree\_m()} function. 
+
+Then inside the \texttt{new\_randomForest()} function, we just do the same as before. First create some bootstrapped samples with the \texttt{bootstrap\_func}, then creating bagged trees through the new \texttt{ grow\_tree\_m()} (by extension through other functions) and then we can just reuse the  \texttt{predict\_with\_bagged\_trees()} to get predictions for the \texttt{y\_test} and then compute the RMSE.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#just a wrapper function for the grow_tree_m funcion to specify $y as y argument }
+\hlcom{#and all other variables as the X argument in matrix, which makes it easier to use}
+\hlstd{grow_tree_on_boot_m} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{dataset}\hlstd{,} \hlkwc{l}\hlstd{,} \hlkwc{m}\hlstd{) \{}
+    \hlkwd{grow_tree_m}\hlstd{(}\hlkwc{X} \hlstd{=} \hlkwd{as.matrix}\hlstd{(dataset} \hlopt{%>%} \hlkwd{select}\hlstd{(}\hlopt{-}\hlstd{y)),} \hlkwc{y} \hlstd{= dataset}\hlopt{$}\hlstd{y,} \hlkwc{l} \hlstd{= l,} \hlkwc{m}\hlstd{=m)}
+\hlstd{\}}
+
+\hlstd{new_randomForest} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{X_train}\hlstd{,} \hlkwc{y_train}\hlstd{,} \hlkwc{X_test}\hlstd{,} \hlkwc{y_test}\hlstd{,} \hlkwc{l}\hlstd{,} \hlkwc{m}\hlstd{,} \hlkwc{B}\hlstd{)\{}
+
+    \hlstd{bootstrapped_sets} \hlkwb{<-} \hlkwd{bootstrap_func}\hlstd{(} \hlkwc{X}\hlstd{=X_train,} \hlkwc{y}\hlstd{=y_train,} \hlkwc{B}\hlstd{=B)}
+
+   \hlstd{bagged_trees_m} \hlkwb{<-} \hlkwd{lapply}\hlstd{(bootstrapped_sets, grow_tree_on_boot_m,} \hlkwc{l} \hlstd{= l,} \hlkwc{m}\hlstd{=m)}
+
+    \hlstd{preds} \hlkwb{<-} \hlkwd{predict_with_bagged_trees}\hlstd{(}\hlkwc{bagged_trees} \hlstd{= bagged_trees_m,}
+                                       \hlkwc{new_obs}\hlstd{=X_test)}
+  \hlstd{rmse} \hlkwb{<-} \hlstd{uuml}\hlopt{::}\hlkwd{rmse}\hlstd{(}\hlkwc{x}\hlstd{= y_test,} \hlkwc{y}\hlstd{= preds)}
+
+   \hlkwd{return}\hlstd{(rmse)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{3.2.3}
+Now we test it with $m=1$ and $B=100$ and predict on the test data. 
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hlstd{(}\hlnum{111}\hlstd{)}
+\hlstd{RF_res_1} \hlkwb{<-} \hlkwd{new_randomForest}\hlstd{(}\hlkwc{X_train}\hlstd{=X_train,} \hlkwc{y_train}\hlstd{=y_train,}
+                    \hlkwc{X_test}\hlstd{=X_test,} \hlkwc{y_test} \hlstd{= y_test,}
+                    \hlkwc{l}\hlstd{=}\hlnum{5}\hlstd{,} \hlkwc{m} \hlstd{=}\hlnum{1}\hlstd{,} \hlkwc{B} \hlstd{=} \hlnum{100}\hlstd{)}
+\hlstd{RF_res_1}
+\end{alltt}
+\begin{verbatim}
+[1] 307.4823
+\end{verbatim}
+\begin{alltt}
+\hlstd{RF_res_2} \hlkwb{<-} \hlkwd{new_randomForest}\hlstd{(}\hlkwc{X_train}\hlstd{=X_train,} \hlkwc{y_train}\hlstd{=y_train,}
+                    \hlkwc{X_test}\hlstd{=X_test,} \hlkwc{y_test} \hlstd{= y_test,}
+                    \hlkwc{l}\hlstd{=}\hlnum{5}\hlstd{,} \hlkwc{m} \hlstd{=}\hlnum{2}\hlstd{,} \hlkwc{B} \hlstd{=} \hlnum{100}\hlstd{)}
+\hlstd{RF_res_2}
+\end{alltt}
+\begin{verbatim}
+[1] 253.577
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+Hence, the RMSE for m=1 proved to be slightly  worse than previously for the bagged trees with a value of 307. But its still in the same neighborhood since it was around 300 earlier.
+However, when testing for with m=2 it proved to be better at 253, though still slightly worse than the actual \texttt{randomForest()} function.
+
+\end{document}
+
+%\section{General questions}
+Bagging can be said to be a procedure to reduce the variance of some specific method
+Bagging builds on the fundamental principle that averaging a set of observations reduces variance. The easiest example is perhaps that a collection of n independent observations denoted as $X_1, X_2 , \dots, X_n$ each with variance $\sigma^2$, then the variance of the mean of the X is $\sigma^2/n$
+For example, given a set of n independent observations X1,X2, · · ·Xn with variance σ2, the variance of the mean of \bar{X} is then $\sigma^2/n$, that is; by taking the average of the collection of observations, it reduces the variance. But since we in practice do not have multiple different training sets available, we can instead bootstrap by repeatedly resampling from a single data set in order to obtain different bootstrapped sets, an average the predictions over all the samples. 
+
+The idea with boosting is to combine many "weak" classifiers (as in a classifier slightly better than just guessing) to create a strong single on instead. For example, AdaBoost, where it sequentially applies the algorithm for the classification to modified data, yielding a sequence of such weak classifiers. Then all the predictions are aggregated by the means of a weighted majority decision where higher weight is given to the better classifiers.boosting step or iteration, the method also applies weights to each observations 
+F Furthermore, during each 
+Also, during the iterations, more weight is given to observations that were incorrectly classified such that  such that they are given more weight. Hence, more weight is given to the observations that were hard to predict.

@@ -1,0 +1,562 @@
+\documentclass[10pt, a4paper, english]{article}
+%typesetting
+\usepackage[margin = 1in]{geometry} % margins
+\usepackage[T1]{fontenc} % font encoding
+\usepackage{babel} %enables typesetting for multiple languages
+\usepackage{parskip} %new lines
+\usepackage{graphicx} 
+\usepackage{float}
+\floatplacement{figure}{H} %when printing tables, include  table.position="H"
+\usepackage{bm}
+\usepackage{amsmath}
+
+\usepackage[dvipsnames]{xcolor} % more colors
+
+\usepackage[colorlinks]{hyperref}
+
+
+ %clickable table of contents from hyperref
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+\usepackage[colorinlistoftodos]{todonotes}
+
+\title{Machine Learning 2ST129 26605 HT2023
+ Assignment 5}
+\author{Anonymous Student}
+\date{\today}
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section*{General Information}
+\begin{itemize}
+\item Time used for reading: 2 hours
+\item Time used for basic assignment 15 hours:
+\item Time used for extra assignment 6 hours: 
+\item Good with lab: Its good that you had the implement the steps one at a time, which helps with learning how the models works.
+\item Things improve with lab: Since there is a newer version of Deep Learning with R, it would be nice if there were reading instructions for that version as well. 
+\end{itemize}
+\newpage
+
+
+ <<echo=FALSE, results=FALSE>>=
+knitr::opts_chunk$set(
+  comment = '', fig.width = 6, fig.height = 6, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE
+)
+@
+
+<<>>=
+#Libraries
+ library(tidyverse)
+ library(xtable)
+ library(tensorflow)
+ library(keras)
+ library(uuml)
+@
+\section{Task 1}
+\subsection{1.1}
+First we start computing the query, key and value matrices for one attention head by implementing it in a function \texttt{qkv()}
+
+<<my_plot, fig.width = 6, fig.asp = 0.62, fig.align = "center", fig.cap = "My scatterplot">>=
+ 
+data("transformer_example")
+ qkv <- function(X, Wq, Wk, Wv){
+   Q<- X %*% Wq
+   K <- X %*% Wk
+   V <- X %*% Wv
+   return(list(Q=Q, K=K, V=V))
+ }
+ 
+   
+Wq <- transformer_example$Wq[,, 1]
+ Wk <- transformer_example$Wk[,, 1] 
+ Wv <- transformer_example$Wv[,, 1]   
+X <- transformer_example$embeddings[1: 3,]
+
+res <- qkv(X, Wq, Wk, Wv)
+@
+
+  % We can now refer to it as Figure \ref{fig:my_plot}
+
+\subsection{1.2}
+Now, based on the query, key and value,  we want to compute the attention of that given attention head for the three chosen tokens. This procedures involes multiple steps. 
+
+<<>>=
+softmax <- function(X){
+  value <- exp(X) / rowSums(exp(X))
+  return(value)
+  }
+attention <- function(Q, K, V) {
+  key_dim <- ncol(K)
+  score_ratio <- (Q%*% t(K)) / sqrt(key_dim)
+  
+  attention <- softmax(score_ratio)
+  
+  
+  Z <- attention %*% V 
+  
+  results <- list(Z = Z, attention = attention)
+  return(results)
+}
+
+attention(res$Q, res$K, res$V)
+@
+
+\subsection{1.3}
+The resulting vector is one we can send along to the feed-forward neural network.
+The second row of the attention matrix, are the 
+ attention scores assigned to the second token, or quick in this case, with respect to   
+ with respect to all other tokens, including itself. For example, in the second row, the second element is the highest, which is the attention score of quick attending to itself. 
+
+\subsection{1.4}
+Now we will implement a multi-head attention layer.
+
+<<>>=
+
+
+compute_attention <- function(X, Wq, Wk, Wv){
+  qkv_res <- qkv(X, Wq, Wk, Wv)
+  attention <- attention(qkv_res$Q, qkv_res$K, qkv_res$V)
+  return(attention)
+}
+
+multi_head_self_attention <- function(X,Q, K , V, W0){
+  n_weights <- dim(K)[3]
+   attention_heads <- sapply(1:n_weights, FUN=function(i){
+   compute_attention(X, Q[,,i], K[,,i], V[,,i])
+  }, simplify = FALSE)
+  combined_matrix<- do.call(cbind, lapply(attention_heads, FUN = function(sub_list){
+     sub_list$Z
+  }))
+  results <- combined_matrix %*% W0
+  return(results)
+}
+
+@
+
+
+<<>>=
+#on example data
+multi_head_self_attention(X,transformer_example$Wq, transformer_example$Wk,
+                                  transformer_example$Wv, transformer_example$W0)
+
+#On whole data
+X <- transformer_example$embeddings
+multi_head_self_attention(X,transformer_example$Wq, transformer_example$Wk,
+                                  transformer_example$Wv, transformer_example$W0)
+
+
+@
+\section{Task 2}
+ 
+\subsection{Task 2.1}
+ Now we are going to implement a one-layer recurrent neural network based on the rnn\_example data. First we implement a RNN linear unit. 
+ 
+ 
+ 
+<<>>=
+X <- rnn_example$embeddings[1,, drop=FALSE]
+X
+hidden_dim <- 4
+
+h_t_minus_one <- matrix(0, nrow = hidden_dim, ncol = 1)
+
+rnn_unit <- function(W,U,b, h_t_minus_one, x_t){
+  at <- b + W %*% h_t_minus_one + U %*% t(x_t) 
+
+  return(at)
+}
+
+a_t <- rnn_unit(h_t_minus_one, x_t=X, W = rnn_example$W, U = rnn_example$U, b = rnn_example$b)
+a_t
+@
+
+\subsection{2.2}
+Now we implement the \texttt{tanh()} activation function $$\frac{e^x-e^{-x}}{e^x+e^{-x}}$$
+<<>>=
+activation <- function(x){
+  return((exp(x) - exp(-x)) / (exp(x) + exp(-x)))
+}
+
+h_t <- activation(a_t) 
+
+h_t
+@
+
+
+\subsection{2.3}
+Now to implement the output function and the softmax function.
+
+<<>>=
+output_rnn<- function(h_t, V, c){
+  return(c + V %*% h_t)
+}
+softmax <- function(o){
+  return(exp(o) / sum(exp(o)))
+}
+
+
+softmax(output_rnn(h_t, rnn_example$V, rnn_example$c) )
+
+
+@
+
+\subsection{2.4}
+
+Now we implement the full recurrent layer. 
+<<>>=
+
+#' combines all the previous functions in one function
+rnn_combined <- function(X, W, V, U, b, c, hidden_dim = 4, h_t_minus_one) {
+  a_t <- rnn_unit(h_t_minus_one = h_t_minus_one, W = W, U = U, b = b, x_t = X)
+  ht <- activation(a_t)
+  o <- output_rnn(ht, V, c)
+
+  y_hat <- softmax(o)
+  return(list(ht = ht, y_hat = y_hat))
+}
+
+
+#Assuming the words are the rows of X
+rnn_layer <- function(X, W, V, U, b, c, hidden_dim = 4){
+  n_rows <- nrow(X)
+  h_t_minus_one <- matrix(0, nrow = hidden_dim, ncol = 1)
+  h_t <- matrix(NA, ncol=hidden_dim, nrow=n_rows)
+  y_hat <- matrix(NA, ncol=nrow(V), nrow=n_rows)
+  for(i in 1:n_rows){
+    X_subset <- X[i,, drop=FALSE]
+    iter_res <- rnn_combined(X_subset, W, V, U, b, c, hidden_dim, h_t_minus_one)
+    h_t_minus_one <- h_t[i,] <- iter_res$ht
+    y_hat[i,] <- iter_res$y_hat
+  }
+  rownames(h_t) <- rownames(y_hat) <- rownames(X)
+  list <- list(ht=h_t, y_hat = y_hat)
+  return(list)
+}
+
+#checking that it works for both cases
+
+rnn_layer(X, W = rnn_example$W, V = rnn_example$V, 
+          U = rnn_example$U, rnn_example$b,c=  rnn_example$c)
+
+X_new <- rnn_example$embeddings[1: 3,, drop=FALSE]
+
+rnn_layer(X_new, W = rnn_example$W, V = rnn_example$V,
+          U = rnn_example$U, rnn_example$b,c=  rnn_example$c)
+
+@
+
+\subsection{2.5}
+Now we apply the function on the whole data and get the value of the hidden state for the token dog. 
+
+<<>>=
+results <- rnn_layer(X= rnn_example$embeddings, W = rnn_example$W, V = rnn_example$V,
+          U = rnn_example$U, rnn_example$b,c=  rnn_example$c)
+
+results
+results$ht["dog", , drop = FALSE]
+@
+
+
+\section{Task 3}
+\subsection{3.1}
+First we load the data.
+<<>>=
+imdb <- dataset_imdb(num_words = 10000) # we consider 10000 words as featers
+maxlen <- 20 #cut off the text after 20 words
+c(c(input_train, y_train), c(input_test, y_test)) %<-% imdb
+input_train <- pad_sequences(input_train, maxlen = maxlen) #load data as list of integers
+input_test <- pad_sequences(input_test, maxlen = maxlen) #turn the list of integers into a 2D integer tensor of shape
+
+@
+
+Now to create a neural network using the following: 
+\begin{itemize}
+\item Emedding layer with 16 dimension
+\item Hidden layer with 32 hidden stats
+\item Validation split of 20 percent
+\item batch size of 128
+\item rmsprop and binary cross-entropy
+\end{itemize}
+
+<<>>=
+model <- keras_model_sequential() %>%
+  layer_embedding(input_dim = 10000, output_dim = 16,            
+                  input_length = maxlen) %>%
+  layer_flatten() %>%
+  layer_dense(units = 32, activation = "relu") %>%
+  layer_dense(units = 1, activation = "sigmoid")
+
+summary(model)
+
+@
+
+<<eval=FALSE>>=
+  model %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("acc")
+)
+  
+
+
+history <- model %>% fit(
+  input_train, y_train,
+  epochs = 10,
+  batch_size = 128,
+  validation_split = 0.2
+)
+
+@
+
+
+The result for the last epoch is:
+<<eval=FALSE>>=
+Epoch 10/10
+157/157 [==============================] - 1s 3ms/step 
+- loss: 0.0532 - acc: 0.9866 - val_loss: 0.9352 - val_acc: 0.7142
+@
+
+<<fig.cap = "Results for the first model">>=
+knitr::include_graphics("model1.png")
+@
+
+As can be seen from the results, the validation accuracy for the last epoch is 0.7142.
+\subsection{3.2}
+The embedding layer uses two arguments, the number of possible tokens, which in this case equals to 10000 by the input\_dim,  and the dimension of the embedding as 16, as given by the output\_dim.
+It can be seen as a dictionary such that it the indices for the integers are mapped to dense vectors. During its training process, it learns to associate each token or word with a specific vector. Then 
+it works by using the input integers and searching for these integers in its internal dictionary and then return the corresponding vectors. 
+
+\subsection{3.3}
+Now to setup a simple RNN with 32 hidden units based on the same embedding layer. 
+
+<<>>=
+library(keras)
+
+model2 <- keras_model_sequential() %>%
+  layer_embedding(input_dim = 10000, output_dim = 16, input_length = maxlen) %>%
+  layer_simple_rnn(units = 32, activation = "tanh") %>%  # RNN layer with 32 hidden units
+  layer_dense(units = 1, activation = "sigmoid")
+
+summary(model2)
+
+@
+
+<<eval=FALSE>>=
+
+model2 %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("acc")
+)
+
+history2 <- model2 %>% fit(
+  input_train, y_train,
+  epochs = 10,
+  batch_size = 128,
+  validation_split = 0.2
+)
+
+@
+
+Now the results are:
+<<eval=FALSE>>=
+Epoch 10/10
+157/157 [==============================] - 1s 5ms/step 
+- loss: 0.0594 - acc: 0.9823 - val_loss: 1.0662 - val_acc: 0.6924
+@
+
+<<fig.cap ="Results for RNN model">>=
+knitr::include_graphics("rnn_model.png")
+@
+Now the validation accuracy is 0.6924. Hence this small rnn does not perform any better. Potentially it could be to the relatively small input length. 
+
+
+\subsection{3.4}
+The model implemented is best described by Fig. 10.5 in Goodfellow et al. The reason is that this model corresponds to a time/unfolded recurrent network with a single output at the end of the sequence, while also having recurrent connections among the hidden units. 
+This is in contrast to the figure in 10.3 where the recurrent networks have recurrent connections among the hidden units, while producing an output at each time point \emph{t}. For example, in this model we have a dense layer with one unit, which means that the rnn gives a single output in the end. 
+
+\subsection{3.5}
+The matrix \textbf{U} in a RNN is a weight matrix representing the hidden connections from the input to the hidden state. The individual elements in the matrix, $U_{i_j}$ are the weights of the connection from a specific input feature $j$  to the \emph{i}:th hidden unit.   The matrix \textbf{W} is a weight matrix  for hidden-to-hidden connections. Here, each element $W_{i,j}$ represents the weight of the connection from the \emph{j}:th hidden unit at the previous time time periods to the \emph{i}:th hidden unit for the current time period. Hence \textbf{U} is related to the influence of the current input on the hidden state, whereas \textbf{W} is related to the influence of the previous hidden stat on the current hidden state. 
+
+
+In the model above, these wight matrices are not directly viewable. However, they exist within the embedding layer. The total number of parameters in this case is the inut\_dim $\times$ output\_dim which equals to $10000 \times 16 = 160000$ for U. 
+
+In the simple RNN layer \texttt{layer\_simple\_rnn()} we have $32 \times 32 + 16 \times 32 + 32 = 1568$ parameters, which contains both U and W.  
+
+
+\subsection{3.6}
+The parameters V represents hidden-to-output connections, or the connections from the recurrent layer to the dense layer, which computes the final output. The number of parameters here is dependent on the number of units ht the simple RNN layer as well as the number of units in the dense layer. Here we have that the number of parameters equals to $32 \times 1 + 1 = 33$where 32 is the number of units in the simple RNN layer and 1 is the number of units the the dense layer, as well as an additional 1 for the bias. 
+
+\subsection{3.7}
+New to implement a Long Short-Term Memory (LSTM) layer with 32 hidden units. 
+
+<<>>=
+LSTM_model <- keras_model_sequential() %>%
+  layer_embedding(input_dim = 10000, output_dim = 16) %>%
+  layer_lstm(units = 32) %>%
+  layer_dense(units = 1, activation = "sigmoid")
+summary(LSTM_model)
+
+@
+
+<<eval=FALSE>>=
+
+LSTM_model %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("acc")
+)
+history_LSTM <- LSTM_model %>% fit(
+  input_train, y_train,
+  epochs = 10,
+  batch_size = 128,
+  validation_split = 0.2
+)
+@
+
+
+The results for the last epoch are:
+<<eval=FALSE>>=
+Epoch 10/10
+157/157 [==============================] - 2s 12ms/step 
+- loss: 0.2800 - acc: 0.8872 - val_loss: 0.5823 - val_acc: 0.7452
+@
+The validation accuracy is 0.7452.
+And the history of the results across all epochs:
+<<fig.cap = "Results for first LSTM model">>=
+knitr::include_graphics("LSTM_model1.png")
+@
+
+\section{3.8}
+First we increase the number of words used to considers as features to 100 instead of 20. Then we also add an additional lstm layer to increase the capacity of the network. This requires the intermediate layer to return their full sequence of outputs, hence we have to specify \texttt{return\_sequences=TRUE}. Then we also add dropout to help against overfitting. Hence we set to \texttt{dropout} argument to 0.2, which is specifying the dropout rate for the input units, as well as the \texttt{recurrent\_dropout}, which corresponds to the dropout rate for the recurrent units. Lastly we also increase the number of epochs used, both because we made new changes in general and perhaps it will take longer to converge due to adding new layers and increasing the number of words. But also because networks regularized with dropout always take longer to converge. 
+
+<<>>=
+maxlen <- 100 #cut off the text after 20 words
+c(c(input_train, y_train), c(input_test, y_test)) %<-% imdb
+input_train <- pad_sequences(input_train, maxlen = maxlen) #load data as list of integers
+input_test <- pad_sequences(input_test, maxlen = maxlen) #turn the list of integers into a 2D integer tensor of shape
+
+LSTM_model2 <- keras_model_sequential() %>%
+  layer_embedding(input_dim = 10000, output_dim = 16) %>%
+  layer_lstm(units = 32, dropout = 0.2, recurrent_dropout = 0.2, return_sequences = TRUE) %>%
+  layer_lstm(units = 32, dropout = 0.2, recurrent_dropout = 0.2) %>% 
+  layer_dense(units = 1, activation = "sigmoid")
+summary(LSTM_model2)
+
+@
+
+<<eval=FALSE>>=
+
+LSTM_model2 %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("acc")
+)
+history_LSTM2 <- LSTM_model2 %>% fit(
+  input_train, y_train,
+  epochs = 20,
+  batch_size = 128,
+  validation_split = 0.2)
+@
+
+
+And the results are:
+<<eval=FALSE>>=
+
+Epoch 20/20
+157/157 [==============================] - 21s 136ms/step
+- loss: 0.1003 - acc: 0.9677 - val_loss: 0.6459 - val_acc: 0.8116
+@
+
+
+
+<<lstm_model_2_plot, fig.cap="Results for second LSTM model">>=
+knitr::include_graphics("lstm_model_2.png")
+@
+Looking at the results, then we see that the validation accuracy for the last epoch is 0.81, and looking at \ref{fig:lstm_model_2_plot} it can be seen that this is were the accuracy seem to stabilize around already after  a few epochs. 
+
+Now we can try some more minor adjustments to see if we can gain some additional accuracy. we can increase the number of words used to 500. Since this also increases the computational power required, then I will also increase the batch size to 256. Also, we can fine tune the learning rate to decrease after 5 epochs. The reason is that an improper learning rate will result in a model with low effective capacity due to optimization problems. The reason for choosing 5 is since the  previous models seemed to have converged around that point. 
+
+<<>>=
+
+maxlen <- 200 #cut off the text after 20 words
+c(c(input_train, y_train), c(input_test, y_test)) %<-% imdb
+input_train <- pad_sequences(input_train, maxlen = maxlen) #load data as list of integers
+input_test <- pad_sequences(input_test, maxlen = maxlen) #turn the list of integers into a 2D integer tensor of shape
+
+LSTM_model3 <- keras_model_sequential() %>%
+  layer_embedding(input_dim = 10000, output_dim = 16) %>%
+  layer_lstm(units = 32, dropout = 0.2, recurrent_dropout = 0.2, return_sequences = TRUE) %>%
+  layer_lstm(units = 32, dropout = 0.2, recurrent_dropout = 0.2) %>% 
+  layer_dense(units = 1, activation = "sigmoid")
+
+summary(LSTM_model3)
+
+
+@
+
+<<eval=FALSE>>=
+
+LSTM_model3 %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("acc")
+)
+
+Scheduler <- function(epoch, lr) {
+  if (epoch < 5) {
+    return(lr)
+  } else {
+    return(lr * exp(-0.1))
+  }
+}
+
+callback_list = list(callback_early_stopping(patience = 5),
+                     callback_learning_rate_scheduler(Scheduler))
+ 
+history_LSTM3 <- LSTM_model3 %>% 
+  fit(
+  input_train, y_train,
+  epochs = 20,
+  batch_size = 256,
+  validation_split = 0.2, 
+    shuffle = TRUE,
+  callbacks =callback_list)
+@
+
+This ended early due to early stopping. The state with the best results before ending it was:
+<<eval=FALSE>>=
+79/79 [==============================] - 
+  51s 648ms/step - loss: 0.1860 - acc: 0.9304 - val_loss: 0.3046 - val_acc: 0.8716 - lr: 7.4082e-04
+@
+
+Here we see that the validation accuracy has increased to 0.87. The same as before, we can also  plot the entire history. 
+<<"Results for final LSTM model">>=
+knitr::include_graphics("lstm_model_3.png")
+@
+
+Now lastly, we can run this best-performing model on the test set to make check if we have over fitted on the validation set. 
+
+<<eval=FALSE>>=
+
+evaluation <- LSTM_model3 %>% evaluate(input_test, y_test)
+@
+
+<<eval=FALSE>>=
+782/782 [==============================] - 16s 20ms/step - loss: 0.4716 - acc: 0.8257
+@
+Looking at the results, then the accuracy for the test set was 0.825. Hence this could indicate that the previous model may have overfitted to a certain degree, since this accuracy is lower. 
+
+
+\end{document}
+
+

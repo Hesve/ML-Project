@@ -1,0 +1,680 @@
+\documentclass[10pt, a4paper, english]{article}
+%typesetting
+\usepackage[margin = 1in]{geometry} % margins
+\usepackage[T1]{fontenc} % font encoding
+\usepackage{babel} %enables typesetting for multiple languages
+\usepackage{parskip} %new lines
+\usepackage{graphicx} 
+\usepackage{float}
+\floatplacement{figure}{H} %when printing tables, include  table.position="H"
+\usepackage{bm}
+\usepackage{amsmath}
+
+\usepackage[dvipsnames]{xcolor} % more colors
+
+\usepackage[colorlinks]{hyperref}
+
+
+ %clickable table of contents from hyperref
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+\usepackage[colorinlistoftodos]{todonotes}
+
+\title{Machine Learning 2ST129 26605 HT2023
+ Assignment 6}
+\author{Anonymous Student}
+\date{\today}
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section*{General Information}
+\begin{itemize}
+\item Time used for reading: 3 hours 
+\item Time used for basic assignment: 18 hours
+\item Time used for extra assignment: 10 hours
+\item Good with lab: It was good that generally for the different methods that the functions were implemented as separate function and then combined in the end, which makes it easier to understand whats going on. 
+\item Things to improve with lab: I think in general there were too many questions to answer, although most of them were relatively simple it just felt that some of the things did not really connect and I just did some of them without really reflecting about them . Maybe less but more difficult questions would have been better. 
+\end{itemize}
+\newpage
+
+
+ <<echo=FALSE, results=FALSE>>=
+knitr::opts_chunk$set(
+  comment = '', fig.width = 6, fig.height = 6, echo=TRUE, warning=FALSE, message=FALSE
+)
+@
+
+<<>>=
+#Libraries
+ library(tidyverse)
+ library(xtable)
+ library(tensorflow)
+ library(keras)
+ library(bsda)
+@
+
+<<>>=
+data("iris")
+data("faithful") 
+library(uuml) 
+data("mixture_data")
+
+
+@
+\section{Task 1}
+\subsection{1.1}
+First we just visualize the faithful data 
+<<fig.cap="faithful data">>=
+plot(faithful)
+
+
+@
+Visually, there seems to be two clusters that I can think of in the corners. 
+\subsection{1.2}
+Now we visualize the iris data set with the species as color.
+<<fig.cap="iris data">>=
+iris %>% 
+  ggplot() +
+  geom_point(aes(x=Petal.Length, y= Petal.Width, color=Species))
+
+@
+
+\subsection{1.3}
+Now we visualize the faithful data again with the hypothesized clusters as colors. Here i based on on eruptions $<=3$
+<<fig.cap="Hypothesized clusters for eruptions">>=
+index <- faithful$eruptions <= 3
+plot(faithful)
+points(faithful$eruptions[index], faithful$waiting[index], col="red")
+points(faithful$eruptions[!index], faithful$waiting[!index], col="blue")
+
+@
+
+\subsection{1.4 } 
+Now to implement the different parts of the k-means algorithm. First step 1.
+
+<<>>=
+#' @param X n X p matrix
+#' @param c p x 1 vector of cluster assignments
+#' n is the number of rows, p is the number of cols
+compute_cluster_means <- function(X, C) {
+  means <- t(sapply(sort(unique(C)), FUN = function(i){
+   index <- which(C == i)
+   colMeans(X[index,]) 
+}))
+colnames(means) <- colnames(X)
+return(means)
+}
+
+set.seed(4711) 
+X <- as.matrix(faithful)
+C <- sample(1: 3, nrow(X), replace = TRUE)
+m <- compute_cluster_means(X,C)
+m
+@
+
+
+\subsection{1.5}
+Now to implement the second step.
+<<>>=
+#function to computer the squared distance given cluster means for one obs
+#assuming the number of columns match .
+cluster_dist <- function(x_i, cluster_means){
+  res <- t(apply(cluster_means, MARGIN=1, FUN= function(row){x_i - row}))
+  sums <- rowSums(res^2)
+  min_cluster <- which.min(sums)
+  return(min_cluster)
+}
+
+#' @param X n×p (design) matrix X 
+#' @param m  K×p matrix m with one cluster mean per row
+#' @return  n × 1 vector of cluster assignments
+compute_cluster_encoding <- function(X, means) {
+new_clusters <- sapply(1:nrow(X), FUN = function(i){ cluster_dist(X[i,], means)})
+return(new_clusters)
+}
+
+C <- compute_cluster_encoding(X, m)
+C[1: 10]
+
+
+
+@
+
+\subsection{1.6}
+Now we use the functions to implement algorithm 14.1 in Hastie et al
+
+<<>>=
+k_means <- function(X,k){
+  clusters <- sample(1:k, nrow(X), replace=TRUE) #initialize cluster assignments
+  while(TRUE){
+      c_means <- compute_cluster_means(X, clusters)
+    new_clusters <- compute_cluster_encoding(X, c_means)
+    if(identical(new_clusters, clusters)){
+      break
+    }
+    clusters <- new_clusters
+  }
+  return(clusters)
+}
+
+@
+
+\subsection{1.7}
+Now to implement  function to compute the k-means withing-point scatter
+
+<<>>=
+set.seed(4711)
+X <- as.matrix(faithful)
+C <- sample(1: 3, nrow(X), replace = TRUE)
+
+k_means_W <- function(X,C){
+  c_means <- compute_cluster_means(X,C)
+   within_cluster_sums<- sapply(1:nrow(c_means), FUN=function(i){
+    current_cluster_m <- c_means[i, ]
+    index <- which(C == i)
+    x_subset <- X[index,]
+     cluster_distances <- apply(x_subset, 1, 
+                                function(row) sum((row - current_cluster_m)^2))
+     sum(cluster_distances)
+})
+   #cluster_distances are the unweighted sums within each cluster
+   #hence here we weight them by the cluster size which are sorted in order
+   aggregated_res <- sum(within_cluster_sums * table(C))
+   return(aggregated_res)
+}
+
+
+k_means_W(X,C)
+
+
+@
+
+\subsection{1.8}
+Now we run it a couple of times for both faithful and iris with K=2 and k=5. 
+First we just create a wrapper function that will be able to be used in a \texttt{mapply()} function. Then we first start with the faithful data
+<<>>=
+#wrapper function to perform the k_means and k_means_W
+#disclaimer: i know usually we should not set seed inside functions, but since
+# the goal here is to explicitly test different seeds i put in the the function
+#to make it easier to test
+k_means_wrapper <- function(seed, X, k ){
+  set.seed(seed)
+  result <- k_means(X,k)
+  wps <- k_means_W(X, result)
+  
+  list <- list("Clusters" = result, "WPS" = wps)
+  return(list)
+  
+}
+
+#here we use hte k_means_wrapper 10 times where the arguments are each of the 
+# ordered pairs. So for the first 5 times we have 2 clusters and then 3 
+# clusters for the last 5. Each time a new seed but same X data. 
+
+multi_res_faithful <- mapply(FUN= k_means_wrapper, 
+                             seed=c(1,2,3,4,5,6,7,8,9,10), X=list(X), 
+                            k=c(rep(2,5), rep(3,5)), SIMPLIFY = FALSE)
+merged_res <- do.call(rbind, multi_res_faithful)
+
+merged_res
+#the clusters column contains the cluster indexes for each obs.
+
+which.min(merged_res[,2])
+which.max(merged_res[,2])
+
+@
+Looking at the results for WPS, then we see that the minimum WPS is for the seventh row, whereas the maximum value is the same for all the first 5 rows corresponding to the results which only used 2 clusters.
+
+Next we do the same thing for this iris data.
+<<>>=
+iris_data <- as.matrix(iris[,-5])
+multi_res_iris <- mapply(FUN= k_means_wrapper, 
+                         seed=c(11,12,13,14,15,17,18,19,20,22),
+                         X=list(iris_data), k=c(rep(2,5),rep(3,5)), 
+                         SIMPLIFY = FALSE)
+
+merged_res_iris <- do.call(rbind, multi_res_iris)
+merged_res_iris
+#the clusters column contains the cluster indexes for each obs.
+
+which.min(merged_res_iris[,2])
+which.max(merged_res_iris[,2])
+@
+Looking at the results for Iris, we get the all the WPS are the sames given the same number of clusters such that all results for 2 clusters are 13521.46 whereas the results for 3 clusters are all 4084.  
+\subsection{1.9}
+Now we visualize the clusters corresponding to the best and worst WPS. Where they are tied I just chose one at random. 
+<<>>=
+plot_func <- function(X, clusters, var1, var2){
+  df <- cbind(X, "clusters"= clusters) %>% 
+    as.data.frame() 
+  df$clusters <- as.factor(df$clusters)
+  x <- ensym(var1)
+  y = ensym(var2)
+  ggplot(df ) +
+    geom_point(aes(x=!!x, y= !!y, color=clusters))
+  # "!!" is for injecting the variables from strings with ensym
+}
+
+
+@
+
+<<eruption_clusters, fig.cap="Clusters for eruption", fig.width=8, fig.height=8>>=
+#here we are sapplying over the indexes corresponding to best and worse WPS
+plots_eruptions <- sapply(c(1,7), FUN = function(i){plot_func(X, 
+                                              multi_res_faithful[[i]]$Clusters, 
+  var1="eruptions", var2="waiting")}, simplify = FALSE)
+gridExtra::grid.arrange(plots_eruptions[[1]], plots_eruptions[[2]])
+@
+
+
+<<fig.cap="Clusters for petal length", fig.width=10, fig.height=10>>=
+plots_iris <- sapply(c(6,1), FUN = function(i){plot_func(as.matrix(iris),
+                                                multi_res_iris[[i]]$Clusters, 
+  var1="Petal.Length", var2="Petal.Width")}, simplify = FALSE)
+
+gridExtra::grid.arrange(plots_iris[[1]], plots_iris[[2]])
+@
+
+\subsection{1.10}
+
+Looking at the results both from 1.8 and 1.9, then we can say that for both of the two data sets then when comparing all 10 results for the different clusters and seed, then the results seem to be similar to each other and follow a similar pattern. That is, for example in both data sets, when comparing the results for all clusters with size 2, or for all clusters with size 3, then those results given the same cluster size were similar to each other with respect to the WPS. But also that 3 clusters were always better in terms of lower WPS.
+
+For example, for the eruption data with 2 clusters they all had the same WPS, and for 3 clusters they were not all the same but relatively similar to each other still, but when comparing 3 clusters to 2 clusters, then 3 clusters had lower WPS. 
+
+Likewise for the iris data, the 2 cluster results had the same WPS, as well as the the 3 clusters having the same WPS. but when comparing 2 clusters to 3 clusters, than 3 clusters always had lower WPS. 
+
+
+Looking at the plots of the clusters for the different data. Then we can see that for figure \ref{fig:eruption_clusters} the subplot with 2 clusters is similar to the one proposed in task 1.3, where we see two groups with, on average, one group with low values of eruptions and waiting in contrast to the other group with higher values. Looking at the plot for the one with 3 clusters, then we see that the third cluster is the one with lowest eruptions and waiting, on average. The second cluster seem to have the highest eruptions and waiting, whereas the first cluster seen ti be more spread out with regards to eruptions, but in somewhere in between the two other clusters with regard to waiting. 
+
+As for the iris plots, we see the for the 2 cluster plot,  then one group is considerably smaller with relatively low values of petal length and petal width, whereas the other group contains a larger spread of values.  For the subplot with 3 clusters then it can bee seen that the first cluster there almost corresponds to the second cluster from the previous plot. But now we also have one cluster which is somewhere in the middle of petal length and petal width, whereas the third cluster has large values of petal length and petal width. 
+
+
+\section{Task 2}
+\subsection{2.1}
+For this task we implement a function that simulate data from the probabilistic PCA model
+
+We have that:
+\begin{equation}
+\mathbf{x} \sim \mathcal{N}\left(\boldsymbol{x} ; \boldsymbol{b}, \boldsymbol{W} \boldsymbol{W}^{\top}+\sigma^2 \boldsymbol{I}\right)
+\end{equation}
+or equivalently
+\begin{equation}
+\mathbf{x}=\boldsymbol{W} \mathbf{h}+\boldsymbol{b}+\sigma \mathbf{z}
+\end{equation}
+
+Hence we can just simulate $\bm{X}$ directly from the multivariate normal distribution.
+
+<<>>=
+pPCA <- function(W,b, sigma2, n_sims){
+  sigma2_diag <- diag(length(W)) #creating a diagonal matrix
+  diag(sigma2_diag) <- sigma2 #replacing diagonals with sigma2 
+mv_sigma <- matrix(W) %*% t(matrix(W)) + sigma2_diag
+X <- rmvnorm(n=n_sims, mean=matrix(b), sigma=mv_sigma )
+colnames(X) <- sapply(1:ncol(X), FUN = function(i){ paste0("X",i)})
+attributes(X)$W <- W
+attributes(X)$b <- b
+return(X)
+}
+
+@
+
+
+<<JIAZHEN, echo=FALSE, eval=FALSE>>=
+
+pPCA <- function(W, b, sigma2, n_sims){
+  
+}
+pPCA2 <- function(W, b, sigma2){
+  browser()
+  K <- ncol(W)
+  D <- nrow(b)
+  n <- 5
+  h <- mvrnorm(n, mu = rep(0, K), Sigma = diag(K)) 
+  z <- mvrnorm(n, mu = rep(0, D), Sigma = diag(D))
+  x <- W*h + b + sqrt(sigma2)*z
+  return(x)
+}
+
+## 2.2
+W <- t(matrix(c(-1, 3), 1, 2))
+b <- t(matrix(c(0.5, 2), 1, 2))
+sigma2 <- 1
+set.seed(1)
+X <- replicate(300, pPCA(W, b, sigma2), simplify = FALSE)
+ pPCA2(W, b, sigma2)
+
+plot(X)
+@
+\subsection{2.2}
+Now we simulate 300 observations and plot them.
+<<>>=
+set.seed(1337)
+W <- c(-1,3)
+b <- c(0.5, 2)
+results <- pPCA(W,b,sigma2=1,n_sim=300)
+@
+
+
+<<fig.cap="Visualization of 300 simulated observations">>=
+plot(results)
+@
+
+\subsection{2.3}
+As described by the equation in 2.1, this model assumes that $\bm{x}$ follows a multivariate normal distribution as $$\mathbf{x} \sim \mathcal{N}\left(\boldsymbol{x} ; \boldsymbol{b}, \boldsymbol{W} \boldsymbol{W}^{\top}+\sigma^2 \boldsymbol{I}\right)$$
+
+Hence the argument b in the code corresponds to the mean vector $\bm{b}$ and that the terms $\bm{WW}^T + \sigma^2\bm{I}$ corresponds to the variance matrix. Also we can say that the argument W corresponds to the factor loadings in the model recalling that it could also be represented on the form:
+$$
+\mathbf{x}=\boldsymbol{W} \mathbf{h}+\boldsymbol{b}+\sigma \mathbf{z}
+$$ where $\bm{h}$ here represents the latent variables. 
+
+\subsection{2.4}
+Now we test some other parameter values for W and b and visualize the results.
+
+<<>>=
+W_list <- list(c(1,2), c(-3,3),
+               c(2,-5), c(0,0), 
+               c(6,10), c(-5,15))
+
+b_list <- list(c(1,3), c(-2,5),
+               c(0.8, 6), c(-1, 1),
+               c(2, -3), c(10, 3))
+set.seed(1337)
+multi_res <- mapply(FUN=pPCA, W=W_list, b=b_list, n_sims=300, sigma2=1, SIMPLIFY = FALSE)
+
+
+@
+
+<<fig.cap="Results for different values of W and b", results=FALSE>>=
+par(mfrow=c(2,3))
+lapply(multi_res, FUN = function(i){
+  W <- attributes(i)$W
+  b <- attributes(i)$b
+main <- paste("W = (", paste(W, collapse = ", "), ")", ", ", 
+              "b = (", paste(b, collapse = ", "), ")" )
+  plot(i, main=main)
+})
+
+par(mfrow=c(1,1))
+@
+
+\subsection{2.5} 
+Now we run PCA on the simulated data from task 2.2.
+<<>>=
+pr_res <- prcomp(results, center=TRUE, scale= FALSE)
+pr_res$rotation[,1] * pr_res$sdev[1] * -1
+@
+
+\subsection{2.6}
+Looking at the results, it can be seen that this corresponds to the parameters in $\bm{W}$, seeing as they are close but not exactly the same .
+
+\subsection{2.7}
+
+For this task we want to simulate new data $\bm{x}$ with five dimensions. We can do that by reusing the previously defined function but increasing the dimension for $\bm{W}$ and $\bm{b}$. I will just simulate some values for them but also make sure in the end that we get both positive and negative correlations
+
+<<fiog.cap="Pairwise scatter plots", fig.width=10, fig.height=10>>=
+set.seed(1337)
+new_W = sample(-5:5, 5, replace=FALSE)
+new_b <- sample(-10:10, 5, replace=TRUE)
+print(new_W)
+print(new_b)
+
+new_results  <- pPCA(W = new_W, b = new_b, sigma2 = 1.3, n=500)
+pairs(new_results)
+@
+\section{Task 3}
+<<>>=
+
+library(uuml)
+data("mixture_data")
+theta0 <- list(mu_1 = 4.12, mu_2 = 0.94, sigma_1 = 2, sigma_2 = 2, pi = 0.5)
+theta0
+hist(mixture_data)
+
+@
+
+
+\subsection{3.1}
+First we create a function to simulate data from a univariate mixture model.
+<<>>=
+r_uni_two_comp<- function(n, theta){
+  #sample delta for each obs
+  deltas <- rbinom(n=n, 1, p=theta$pi)
+  y_1 <- rnorm(n=n, mean=theta$mu_1, sd= theta$sigma_1)
+  y_2 <- rnorm(n=n, mean=theta$mu_2, sd=theta$sigma_2)
+  Y <- (1-deltas) * y_1 + deltas*y_2
+  return(Y)
+  #samply y_i from the relevant component
+}
+head(r_uni_two_comp(n=100, theta=theta0))
+@
+
+
+\subsection{3.2}
+Now to simulate 200 observations using $\mu_1=-2, \mu_2 = 1.5, \sigma_1 = 2, \sigma_2=1, \pi=0.3$
+<<fig.cap = "Distribution for simulated observations">>=
+set.seed(1337)
+thetas <-list(mu_1=-2, mu_2=1.5, 
+              sigma_1=2, sigma_2=1,
+              pi=0.3)
+
+observations <- r_uni_two_comp(200, thetas)
+hist(observations)
+
+@
+
+\subsection{3.3}
+Now we implement a function to compute the density values for a given set of parameters theta for values of x.
+<<>>=
+d_uni_two_comp <- function(x, theta){
+  dens_1 <- dnorm(x, mean=theta$mu_1, sd = theta$sigma_1) 
+  dens_2 <- dnorm(x, mean=theta$mu_2, sd=theta$sigma_2)
+  g_x <- (1-theta$pi) * dens_1 + theta$pi*dens_2 
+  return(g_x)
+}
+
+
+@
+
+\subsection{3.4}
+Now we visualize the density for the mixture model.
+<<fig.cap="Density for the mixture model from -4 to 4">>=
+plot_density <- function(x, theta,...){
+  densities <- d_uni_two_comp(x, theta)
+  plot(x=x, y=densities, col="blue", ...)
+}
+
+plot_density(x=seq(-4,4, by=0.01), theta=thetas)
+
+@
+
+\subsection{3.5}
+now we visualize the eruptions variable in the faithful data
+<<eruptions, fig.cap="Distribution of eruptions">>=
+hist(faithful$eruptions)
+@
+
+
+
+\subsection{3.6}
+Based on the figure \ref{fig:eruptions} we see that there are two peaks. One around 2 and one around 4.5 which could be indication of what means values to use. Testing for some different values of parameters of theta, the following one gives somewhat reasonable results. 
+
+<<>>=
+set.seed(1337)
+theta3<- list(pi=0.5, "mu_1" = 4, "mu_2" = 1.5, sigma_1 = 0.5, sigma_2 = 0.5)
+print(theta3)
+obs <- r_uni_two_comp(n=500,theta=theta3)
+par(mfrow=c(1,2))
+hist(obs)
+plot_density(x=obs, theta3)
+par(mfrow=c(1,1))
+@
+
+
+\subsection{3.7}
+Now we implement a function that returns a vector of gamma values for each row in $\bm{X}$
+
+
+<<>>=
+e_uni_two_comp <- function(data, theta){
+  pi <- theta$pi
+  mu1 <- theta$mu_1
+  mu2 <- theta$mu_2
+  sigma1 <- theta$sigma_1
+  sigma2 <- theta$sigma_2
+  numerator <- pi*dnorm(data, mean=mu2, sd=sigma2)
+  denominator <- (1-pi) *dnorm(data, mean=mu1, sd=sigma1) + numerator
+  gamma_values <- numerator / denominator
+  return(gamma_values)
+}
+
+gamma <- e_uni_two_comp(mixture_data, theta0)
+t(head(gamma))
+@
+
+\subsection{3.8}
+The gamma values are the irresponsibility for the observations. These responsibilities are obtained by the estimates of the parameters used in the function such that the responsibilities are assigned according to the relative density of the training under both models. For example, the first three obtained gamma values were 0.91, 0.87, and 0.78. These corresponds to the probabilities or weights that the first three observations belong to group 2 since component 2 is used as the base line component or so to speak .
+
+\subsection{3.9}
+Now we implement a function to return a list with the parameters given X and gamma.
+
+<<>>=
+max_uni_two_comp <- function(x, gamma){
+  mu_1 <- sum((1-gamma)*x) / sum(1-gamma)
+  mu_2 <- sum(gamma*x) / sum(gamma)
+  sigma_1_square <- sum ( (1-gamma) * (x-mu_1)^2 ) / sum(1-gamma)
+  sigma_2_square <- sum( gamma*(x-mu_2)^2 ) / sum(gamma)
+  pi <- mean(gamma)
+  
+  results <- list("mu_1"= mu_1, "mu_2"=mu_2, "sigma_1"= sqrt(sigma_1_square),
+                  "sigma_2"= sqrt(sigma_2_square), "pi"=pi)
+  return(results)
+}
+
+max_uni_two_comp(mixture_data, gamma)
+@
+
+
+\subsection{3.10}
+Next we implement the log-likelihood as a function.
+
+<<>>=
+ll_uni_two_comp <- function(x, theta){
+  pi <- theta$pi
+  mu1 <- theta$mu_1
+  mu2 <- theta$mu_2
+  sigma1 <- theta$sigma_1
+  sigma2 <- theta$sigma_2
+  log_lik <- log((1-pi)*(dnorm(x, mean=mu1, sd=sigma1)) + 
+                   pi*dnorm(x, mean=mu2, sd=sigma2))
+  total_sum <- sum(log_lik)
+  return(total_sum)
+} 
+ll_uni_two_comp(mixture_data, theta0)
+
+
+
+@
+
+\subsection{3.11}
+Now to combine the implemented function to an EM algorithm.
+
+
+<<>>=
+#' @param X  n x P data matrix
+em_uni_two_comp <- function(X, theta0, iter){
+  gamma_matrix <- matrix(NA, ncol=nrow(X), nrow=iter) 
+  theta_matrix <- matrix(NA, ncol=length(theta0), nrow=iter)
+  log_l_matrix <- matrix(NA, ncol=1, nrow=iter)
+  colnames(theta_matrix) <- names(theta0)
+  #initialize first theta
+   theta <- theta0
+  for (i in 1:iter){
+    gamma_values <- e_uni_two_comp(X, theta)
+    theta <- max_uni_two_comp(X, gamma=gamma_values)
+    l_lik <- ll_uni_two_comp(x=X, theta=theta)
+    gamma_matrix[i,] <- gamma_values
+    log_l_matrix[i,] <- l_lik
+    theta_matrix[i,] <- do.call(cbind, theta)
+    cat("Iter", i, "Log Lik: ",l_lik, fill = TRUE)
+
+  }
+   return(list("gamma" = gamma_matrix, "log_l"= log_l_matrix, "theta"= theta_matrix))
+}
+em_res <- em_uni_two_comp(mixture_data, theta0, iter = 3)
+em_res
+@
+
+
+
+\subsection{3.12}
+Now to test in on the mixture data for 20 iterations.
+<<>>=
+em_res_20 <- em_uni_two_comp(mixture_data, theta0 , iter = 20)
+round(em_res_20$theta[c(1,5,10,15,20),], digits=3)
+@
+The results for the parameters are pretty similiar, though they are not exactly equal for all decimals. Now we can plot the log-likelihood as well.
+
+<<log_l_plot, fig.cap="EM algorithm: observed data log-likelihood as a function of the iteration number.">>=
+plot(em_res_20$log_l, col="green", type="l", xlab="Iteration", 
+     ylab="Observed Data Log-likelihood")
+points(em_res_20$log_l, col="green", pch=1, cex=1.5)
+@
+
+The plot is also pretty similar to the one in Hastie et al. 
+
+\subsection{3.13}
+Next we run the EM algorithm on the eruptions variable as well as Petal.Length.
+
+<<>>=
+
+eruption_res <-em_uni_two_comp(as.matrix(faithful$eruptions), theta0 , iter = 20)
+petal_res<- em_uni_two_comp(as.matrix(iris$Petal.Length), theta0 , iter = 20)
+
+#estimated parameters for iter 1,5,10,15, and 20
+eruption_res$theta[c(1,5,10,15,20),]
+
+petal_res$theta[c(1,5,10,15,20),]
+
+
+@
+\subsection{3.14}
+Lastly we visualize the densities for the two data sets using the parameters estimated with the EM-algorithm
+<<fig.cap="Densities for eruptions">>=
+
+#Extracting thetas from last row of results
+eruption_theta <- eruption_res$theta[nrow(eruption_res$theta),]
+#converting thetas to list
+eruption_theta_list <- list()
+for(i in 1:5){
+  eruption_theta_list[[names(eruption_theta)[i]]] <- eruption_theta[i]
+}
+
+par(mfrow=c(1,2))
+hist(faithful$eruptions)
+plot_density(x=faithful$eruptions, theta=eruption_theta_list,
+             main="Densities for Eruption data")
+
+@
+
+<<fig.cap="densities for petal length">>=
+petal_theta <- petal_res$theta[nrow(petal_res$theta),]
+petal_theta_list <- list()
+for(i in 1:5){
+  petal_theta_list[[names(petal_theta)[i]]] <- petal_theta[i]
+}
+par(mfrow=c(1,2))
+hist(iris$Petal.Length)
+plot_density(x=iris$Petal.Length, theta=petal_theta_list, 
+             main="Densities for Petal length data")
+@
+
+\end{document}

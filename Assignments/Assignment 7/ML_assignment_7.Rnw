@@ -1,0 +1,335 @@
+\documentclass[10pt, a4paper, english]{article}
+%typesetting
+\usepackage[margin = 1in]{geometry} % margins
+\usepackage[T1]{fontenc} % font encoding
+\usepackage{babel} %enables typesetting for multiple languages
+\usepackage{parskip} %new lines
+\usepackage{graphicx} 
+\usepackage{float}
+\floatplacement{figure}{H} %when printing tables, include  table.position="H"
+\usepackage{bm}
+\usepackage{amsmath}
+
+\usepackage[dvipsnames]{xcolor} % more colors
+
+\usepackage[colorlinks]{hyperref}
+
+
+ %clickable table of contents from hyperref
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+\usepackage[colorinlistoftodos]{todonotes}
+\setcounter{secnumdepth}{0}data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAWElEQVR42mNgGPTAxsZmJsVqQApgmGw1yApwKcQiT7phRBuCzzCSDSHGMKINIeDNmWQlA2IigKJwIssQkHdINgxfmBBtGDEBS3KCxBc7pMQgMYE5c/AXPwAwSX4lV3pTWwAAAABJRU5ErkJggg==
+
+\title{Machine Learning 2ST129 26605 HT2023
+ Assignment 7}
+\author{Anonymous Student}
+\date{\today}
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section{General Information}
+\begin{itemize}
+\item Time used for reading: 3 hours  
+\item Time used for basic assignment: 16 hours
+\item Time used for extra assignment: NA
+\item Good with lab: I think that in general it was a good overall structure of the different tasks. For example, that we had to implement something, plot it and also interpret it, which I felt was good for learning.
+\item Things improve with lab: In my opinion, it would have been good if there was some more information about the code, especially for task 1. For example, now I mostly copy pasted the code from the linked guide to get it to work, but I do not really know what some of that parts are supposed to represent. 
+\end{itemize}
+
+\newpage
+ <<echo=FALSE, results=FALSE>>=
+knitr::opts_chunk$set(
+  comment = '', fig.width = 6, fig.height = 6, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE
+)
+@
+
+\section{Task 1}
+
+\subsection{1.1}
+First we load the required libraries as well as the mnist data
+<<>>=
+#Libraries
+ library(tidyverse)
+ library(xtable)
+ library(tensorflow)
+ library(keras)
+@
+
+<<>>=
+mnist <- dataset_mnist()
+x_train <- mnist$train$x/255
+x_test <- mnist$test$x/255
+x_train <- array_reshape(x_train, c(nrow(x_train), 784), order = "F")
+x_test <- array_reshape(x_test, c(nrow(x_test), 784), order = "F")
+
+@
+
+
+\subsection{1.2}
+Now we want to implement a a one-layer (encoder and decoder) feed-forward variational autoencoder with two latent dimensions such that both the encoder and decoder layers should each have 200 hidden units. The following code is pretty much all based on the example as provided by the variational\_autoencoder.R guide on GitHub. Though with some minor differences such that we change the dimensions.  
+
+
+
+<<>>=
+if (tensorflow::tf$executing_eagerly())
+  tensorflow::tf$compat$v1$disable_eager_execution()
+batch_size <- 100L
+original_dim <- 784L
+latent_dim <- 2L
+intermediate_dim <- 200L
+epochs <- 50L
+epsilon_std <- 1.0
+
+# Model definition --------------------------------------------------------
+
+x <- layer_input(shape = c(original_dim))
+h <- layer_dense(x, intermediate_dim, activation = "relu")
+z_mean <- layer_dense(h, latent_dim)
+z_log_var <- layer_dense(h, latent_dim)
+
+sampling <- function(arg){
+  z_mean <- arg[, 1:(latent_dim)]
+  z_log_var <- arg[, (latent_dim + 1):(2 * latent_dim)]
+  
+  epsilon <- k_random_normal(
+    shape = c(k_shape(z_mean)[[1]]), 
+    mean=0.,
+    stddev=epsilon_std
+  )
+  
+  z_mean + k_exp(z_log_var/2)*epsilon
+}
+
+
+z <- layer_concatenate(list(z_mean, z_log_var)) %>% 
+  layer_lambda(sampling)
+
+# we instantiate these layers separately so as to reuse them later
+decoder_h <- layer_dense(units = intermediate_dim, activation = "relu")
+decoder_mean <- layer_dense(units = original_dim, activation = "sigmoid")
+h_decoded <- decoder_h(z)
+x_decoded_mean <- decoder_mean(h_decoded)
+
+# end-to-end autoencoder
+vae <- keras_model(x, x_decoded_mean)
+
+# encoder, from inputs to latent space
+encoder <- keras_model(x, z_mean)
+
+# generator, from latent space to reconstructed inputs
+decoder_input <- layer_input(shape = latent_dim)
+h_decoded_2 <- decoder_h(decoder_input)
+x_decoded_mean_2 <- decoder_mean(h_decoded_2)
+generator <- keras_model(decoder_input, x_decoded_mean_2)
+
+
+vae_loss <- function(x, x_decoded_mean){
+  xent_loss <- (original_dim/1.0)*loss_binary_crossentropy(x, x_decoded_mean)
+  kl_loss <- -0.5*k_mean(1 + z_log_var - k_square(z_mean) - k_exp(z_log_var), axis = -1L)
+  xent_loss + kl_loss
+}
+
+vae %>% compile(optimizer = "rmsprop", loss = vae_loss)
+@
+\subsection{1.3}
+<<>>=
+print(vae)
+@
+
+As for how many weights there are used to compute $\mu$ and $\sigma^2$ for the latent variables, we have set the variable original\_dim to 784 and the variable intermediate\_dim to 200. Hence in total we have (784+1 ) * 200 weights.  
+
+The layer repersenting the latent variable is the object \texttt{z} in the code, which is obtianed by combining  z\_mean and z\_log\_var. 
+
+The lambda layer is used to sample from the specified distribution from z, since we get both the mean and variance. Then this is used as the latent representation in the variational autoencoder. 
+\subsection{1.4}
+Now we train the VAE on the MNIST data for 50 epochs and visualize some of the results. 
+<<eval=FALSE>>=
+results <- vae %>% fit(
+  x_train, x_train, 
+  shuffle = TRUE, 
+  epochs = epochs, 
+  batch_size = batch_size, 
+  validation_data = list(x_test, x_test)
+)
+@
+
+First we can simply plot the history over the epochs.
+<<fig.cap ="epochs history">>=
+knitr::include_graphics("vae_hist.png")
+@
+
+Next plot latent state for the different numbers.
+<<eval=FALSE>>=
+x_test_encoded <- predict(encoder, x_test, batch_size = batch_size)
+
+x_test_encoded %>%
+  as_data_frame() %>% 
+  mutate(class = as.factor(mnist$test$y)) %>%
+  ggplot(aes(x = V1, y = V2, colour = class)) + geom_point()
+@
+
+
+<<fig.cap="latent states for different numbers">>=
+knitr::include_graphics("vae_scatter.png")
+@
+
+As can be seen from the output. This scatter plot shows how the different classes (digits) are distributed for the hidden states. In general the classes that are close to each other and clustered are better represented, whereas big overlaps means that it is not as good represented. Looking at the plot, then we can see for example that the digit 2 is very centered in the middle and thus well represented, whereas for example the digit 1 is more spread out on the left and not as well represented. 
+
+\subsection{1.5}
+Now to encode all the 2s in the test dataset to the latent state using the encoder.
+
+<<>>=
+x_digit_2 <- x_test[mnist$test$y == 2, , drop = FALSE]
+digit_2_LS <- predict(encoder, x_digit_2)
+latent_states_mean <- colMeans(digit_2_LS)
+latent_states_mean
+@
+
+\subsection{1.6}
+And lastly we plot this as an image using the decoder.
+<<eval=FALSE>>=
+matrix(latent_states_mean, nrow=1) %>% 
+  predict(generator, .) %>% 
+  array_reshape(dim=c(28,28), order = c("F")) %>%
+  image(., col = gray.colors(n =  256))
+@
+
+<<echo=FALSE, fig.cap = "28 x 28 pixel image of the latent state">>=
+knitr::include_graphics("mean_latent_img.png")
+@
+
+
+\section{Task 2}
+\subsection{2.1}
+First we load the data and remove the stopwords.
+<<>>=
+library(uuml)
+library(dplyr)
+library(tidytext)
+data("pride_and_prejudice")
+data("stopwords")
+@
+
+<<>>=
+pap <- pride_and_prejudice
+pap <- anti_join(pap, y = stopwords[stopwords$lexicon == "snowball",])
+## Joining with `by = join_by(word)`
+@
+
+\subsection{2.2}
+Next we remove rare words
+<<>>=
+word_freq <- table(pap$word)
+rare_words <- data.frame(word = names(word_freq[word_freq <= 5]), 
+                         stringsAsFactors = FALSE) 
+pap <- anti_join(pap, y = rare_words)
+## Joining with `by = join_by(word)`
+@
+
+\subsection{2.3}
+
+Now to compute a document term matrix where each paragraph is treated as a document. 
+<<>>=
+library(tm)
+crp <- aggregate(pap$word, by = list(pap$paragraph), FUN = paste0, collapse = " " ) 
+names(crp) <- c("paragraph", "text") 
+s <- SimpleCorpus(VectorSource(crp$text))
+m <- DocumentTermMatrix(s)
+print(s)
+print(m)
+
+@
+Here we have 2051 documents and 1689 terms.
+
+\subsection{2.4}
+For this step we runt the Gibbs sampler for 2000 iterations.
+<<>>=
+library(topicmodels) 
+K <- 10
+control <- list(keep = 1, delta = 0.1, alpha = 1, iter = 2000)
+tm <- LDA(m, k = K, method = "Gibbs", control)
+
+@
+
+\subsection{2.5}
+
+Next we extract some parameters.
+
+<<>>=
+lls <- extract_log_liks(tm)
+theta <- extract_theta(tm)
+phi <- extract_phi(tm)
+@
+
+
+\subsection{2.6}
+And now to check if the log likelihood has converged.
+<<fig.cap ="Log likelihood for epochs">>=
+
+plot(lls, ylab="Log-likelihood", xlab="Epoch")
+@
+Looking at the figure, it seems as if the log-likelihood has converged. 
+\subsection{2.7}
+Now we extract the top 20 words for each of the 10 topic.
+<<>>=
+#function to extract n number of top words given topic
+extract_func <- function(topic_index, phi_parameter, n_words){
+  words <- colnames(phi_parameter)[order(-phi_parameter[topic_index,])]
+  return(words[1:n_words])
+}
+
+#using the function over all 10 topics
+sapply(1:10, FUN =function(i){extract_func(topic_index=i, phi_parameter = phi, n_words=20)})
+@
+
+Looking at the topics, then I would say that perhaps topic 1 since it contains some words that reflects some key concepts and general state of the novel. For example, that the idea is the everyone must find someone to marry in order to bring happiness, but in the process of doing so the sisters reflect on the situation and general feelings on whether or not they actually want to go thorugh with it or not . Annother topic is perhaps topic 4 since it contains some of the names of the characters in the novel, or the relationships between the chaaracetsr suc has bennet, bingley,  Elizabeth or netherfield, as well as some descriptions such as daughters, sisters or mother and so on. 
+\subsection{2.8}
+Next we visualize how these evolve over the paragraphs.
+<<fig.cap="vizualisation of topics over time", fig.width=10>>=
+plot_topics <- function(theta_matrix, col_index1, col_index2) {
+  paragraphs <- 1:nrow(theta_matrix)
+  topic1 <- theta_matrix[, col_index1]
+  topic2 <- theta_matrix[, col_index2]
+
+  new_df <- tibble(paragraphs, topic1, topic2)
+  name1 <- paste("Topic no. ", col_index1)
+  name2 <- paste("Topic no. ", col_index2)
+
+  new_df %>%
+    ggplot(aes(x = paragraphs)) +
+    geom_line(aes(y = topic1, color = name1), size = 1) +
+    geom_line(aes(y = topic2, color = name2), size = 1) +
+     scale_color_discrete(name="") +
+    labs(
+      title = "Topics over time on paragraphs",
+      x = "Paragraph",
+      y = expression(theta)
+    )
+}
+
+plot_topics(theta, 1, 4)
+
+
+@
+
+\subsection{2.9}
+Lastly, we visualize it again as a rolling mean with k=5. 
+<<topic_means, fig.cap="Topic rolling means", fig.width=10>>=
+head(zoo::rollmean(theta[,1], k=5))
+theta_rolling_m <- zoo::rollmean(x=theta, k =5)
+plot_topics(theta_rolling_m, 1, 4)
+
+@
+Looking as this figure, we see that in general Topic number 4 seems to always somewhat relevant for the different paragraphs such that we see the value for theta jumping back and fort between 0.5 - 0.25, but it does so somewhat consistently across the different paragraphs, albeit there being a decrease in the middle for a short while. Looking at topic number 1 , we see that it is not as prevalent in the first quarter of the paragraphs, but then evolves to be more relevant in the middle and the end , which perhaps can be attributed due to the fact that it contained many names that becomes more relevant during that period. 
+
+\end{document}

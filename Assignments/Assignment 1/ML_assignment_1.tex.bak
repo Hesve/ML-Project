@@ -1,0 +1,490 @@
+\documentclass[10pt, a4paper, english]{article}\usepackage[]{graphicx}\usepackage[dvipsnames]{xcolor}
+% maxwidth is the original width if it is less than linewidth
+% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+\let\hlipl\hlkwb
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+%typesetting
+\usepackage[margin = 1in]{geometry} % margins
+\usepackage[T1]{fontenc} % font encoding
+\usepackage{babel} %enables typesetting for multiple languages
+\usepackage{parskip} %new lines
+\usepackage{graphicx} 
+\usepackage{float}
+\floatplacement{figure}{H} %when printing tables, include  table.position="H"
+\usepackage{bm}
+\usepackage{amsmath}
+
+\usepackage[dvipsnames]{xcolor} % more colors
+
+\usepackage[colorlinks]{hyperref}
+
+
+ %clickable table of contents from hyperref
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+\usepackage[colorinlistoftodos]{todonotes}
+
+
+\title{Machine Learning 2ST129 26605 HT2023
+ Assignment }
+\author{Anonymous Student}
+\date{\today}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+
+
+
+\section*{General Information}
+\begin{itemize}
+\item Time used for reading: 
+\item Time used for basic assignment:
+\item Time used for extra assignment 
+\item Good with lab 
+\item Things to improve in the lab: 
+\end{itemize}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#Libraries}
+ \hlkwd{library}\hlstd{(tidyverse)}
+ \hlkwd{library}\hlstd{(xtable)}
+ \hlkwd{library}\hlstd{(uuml)}
+ \hlkwd{library}\hlstd{(gridExtra)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+
+\section{Task 1: General Questions}
+Efron views the pure prediction algorithms as an additional tool to be used along with the traditional regression methods, but they are not scientifically applicable in the same sense. The traditional regression methods are based on the idea that there is some sort surface and a noise formulation , where the surface is the "truth" that one wishes to learn about but which we can only observe obscured by noise. the traditional methods are about learning as much as possible about the surface from the data. The pure prediction algorithms are, as the name sounds, focused only on the prediction aspect; they ignore estimation and attribution and instead opt for a high predictive accuracy while ignoring the surface plus noise models. They operate nonparametrically due to not having to worry about estimation efficiency, whereas the traditional regression methods uses parametric modelling and is focused on causality. Furthermore, the traditional methods revolves around parsomonious modeling such that the researches chooses the covariates, whereas the pure prediction algorithms instead lets the algorithms choose predictors, and they are also able to handle enormous amount of data with more predictors than observations. 
+
+The bias-variance trade-off is the concept that describes the relationship between the complexit of a model, its preiction accuracy, including the predictions on data not used for training the model. The idea is that lowering the bias of the expected prediction error instead increase the variance, or vice versa. For example: assuming that Y can be modeled as $Y = f(X) + \epsilon$ with $E(\epsilon) = 0$ and $var (\epsilon) = \sigma^2$, then the expected prediction error can be expressed as : Err($x_0$) = irreducible Error + $\text{Bias}^2$ + Variance.  Then as the model becomes more complex, the squared bias is reduved but at the cost of higher variance.  However, the bias-variance tradoff works differently depending on the situation, for example when comparing 0-1 loss in a classification setting compard to the squared error loss for a regression. Or for example  in the case with the regularisation methods such has lasso, ridge regresson or elastic net. Then for a model with a log-likelihood function $L(\beta)$, then these maximizes $L^*
+(\beta) = L(\beta) - S(\beta)$ where \texttt{s()} is a function such that $s(\beta)$ is decreasing when the elements within $\beta$ are smoother. Then these regularusaitom method uses the $\text{L}_q$- norm smoothing functons S($\beta) = \lambda \sum_{j=1}^p | \beta_j| ^q $ for some $q \geq 0, \lambda \geq 0$. When choosing $\lambda$ then there is a trade-off in the bias and variance such that when one increases $\lambda$, it results in less variance but in the cost of greater bias. 
+
+
+\section{Task 2: Basic, Stochastic, and Mini-Batch Gradient Descent}
+\subsection{Gradient for logistic regression}
+\subsubsection{Derive gradient}
+For this task we want to derive the gradient for $NNL(\theta, \bm{y}, \bm{X}) = -l(\theta, \bm{y}, \bm{X})$ 
+where we have that the likelihood function can be expressed as:
+$$L(\theta, \bm{y}, \bm{X}) = \prod_{i=1}^n p_i^{y_i}(1-p_i)^{1-yi}$$
+
+and the log likelihood:
+\begin{align}
+l(\theta, \mathbf{y}, \mathbf{X}) & =\sum_{i=1}^n y_i \log \left(p_i\right)+\left(1-y_i\right) \log \left(1-p_i\right) \\
+& =\sum_{i=1}^n y_i \mathbf{x}_i \theta+\log \left(1-p_i\right) \\
+& =\sum_{i=1}^n y_i \mathbf{x}_i \theta-\log \left(1+\exp \left(\mathbf{x}_i \theta\right)\right) .
+\end{align}
+
+The gradient represents the vector of partial derivatives of the log likelihood with respect to each element of $\theta$:
+\begin{equation}
+\nabla L(f(x ; \theta), y)=\left[\begin{array}{c}
+\frac{\partial}{\partial w_1} L(f(x ; \theta), y) \\
+\frac{\partial}{\partial w_2} L(f(x ; \theta), y) \\
+\vdots \\
+\frac{\partial}{\partial w_n} L(f(x ; \theta), y) \\
+\frac{\partial}{\partial b} L(f(x ; \theta), y)
+\end{array}\right]
+\end{equation}
+
+The partial derivatives of the log likelihood:
+\[
+\frac{\partial l}{\partial \theta_j} = \sum_{i=1}^n \left(y_i x_{ij} - \frac{x_{ij} \exp(\mathbf{x}_i \theta)}{1 + \exp(\mathbf{x}_i \theta)}\right)
+\]
+
+hence the gradient is for NLL is :
+
+\[
+\nabla l(\theta, \mathbf{y}, \mathbf{X}) =-  \left(\frac{\partial l}{\partial \theta_1}, \frac{\partial l}{\partial \theta_2}, \ldots, \frac{\partial l}{\partial \theta_p}\right)
+\]
+
+Where \(p\) is the number of parameters in the vector \(\theta\).
+Or in matrix form:
+\[\nabla l(\theta, \mathbf{y}, \mathbf{X}) = - \mathbf{X}^T (\mathbf{y} - \mathbf{p}) \]
+
+where we have that
+$\bm{y}$ is a vector of the values of $y_i$.
+$\bm{X}$is the $ N \times (p+1) $ design matrix of $x_i$ values, $\bm{P}$  is the vector of fitted probabilities $p_i$
+
+\subsubsection{Implement gradient in R}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{data}\hlstd{(}\hlstr{"binary"}\hlstd{)}
+\hlstd{binary}\hlopt{$}\hlstd{gre_sd} \hlkwb{<-} \hlstd{(binary}\hlopt{$}\hlstd{gre} \hlopt{-} \hlkwd{mean}\hlstd{(binary}\hlopt{$}\hlstd{gre))} \hlopt{/}\hlkwd{sd}\hlstd{(binary}\hlopt{$}\hlstd{gre)}
+\hlstd{binary}\hlopt{$}\hlstd{gpa_sd} \hlkwb{<-} \hlstd{(binary}\hlopt{$}\hlstd{gpa} \hlopt{-} \hlkwd{mean}\hlstd{(binary}\hlopt{$}\hlstd{gpa))} \hlopt{/}\hlkwd{sd}\hlstd{(binary}\hlopt{$}\hlstd{gpa)}
+\hlstd{X} \hlkwb{<-} \hlkwd{model.matrix}\hlstd{(admit} \hlopt{~} \hlstd{gre_sd} \hlopt{+} \hlstd{gpa_sd, binary)}
+\hlstd{y} \hlkwb{<-} \hlstd{binary}\hlopt{$}\hlstd{admit}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#' gradient function}
+\hlcom{#' @param y  vector of observations outcomes}
+\hlcom{#' @param X Data Matrix}
+\hlcom{#' @param theta Parameters}
+\hlcom{#' @return The gradient}
+
+\hlcom{# Gradient function}
+\hlstd{ll_grad} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{theta}\hlstd{) \{}
+  \hlstd{n} \hlkwb{<-} \hlkwd{length}\hlstd{(y)}
+  \hlstd{P} \hlkwb{<-} \hlnum{1} \hlopt{/} \hlstd{(}\hlnum{1} \hlopt{+} \hlkwd{exp}\hlstd{(}\hlopt{-}\hlstd{X} \hlopt{%*%} \hlstd{theta))}
+  \hlstd{grad} \hlkwb{<-} \hlkwd{t}\hlstd{(X)} \hlopt{%*%} \hlstd{(P} \hlopt{-} \hlstd{y)} \hlopt{/} \hlstd{n}
+  \hlkwd{return}\hlstd{(grad)}
+\hlstd{\}}
+
+
+\hlkwd{round}\hlstd{(}\hlkwd{t}\hlstd{(}\hlkwd{ll_grad}\hlstd{(y, X,} \hlkwc{theta} \hlstd{=} \hlkwd{c}\hlstd{(}\hlnum{0}\hlstd{,} \hlnum{0}\hlstd{,} \hlnum{0}\hlstd{))),} \hlnum{4}\hlstd{)}
+\hlkwd{round}\hlstd{(}\hlkwd{t}\hlstd{(}\hlkwd{ll_grad}\hlstd{(y, X,} \hlkwc{theta} \hlstd{=} \hlkwd{c}\hlstd{(}\hlopt{-}\hlnum{1}\hlstd{,} \hlnum{0.5}\hlstd{,} \hlnum{0.5}\hlstd{))),} \hlnum{4}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+\subsection{Implement Gradient Descent}
+\subsubsection{1}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{theta} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlnum{0}\hlstd{,} \hlnum{0}\hlstd{,} \hlnum{0}\hlstd{)}
+\hlkwd{ll}\hlstd{(y, X, theta)}
+\hlkwd{glm}\hlstd{(y} \hlopt{~}\hlstd{X}  \hlopt{-}\hlnum{1} \hlstd{,} \hlkwc{family} \hlstd{=} \hlkwd{binomial}\hlstd{(}\hlkwc{link} \hlstd{=} \hlstr{"logit"}\hlstd{))}\hlopt{$}\hlstd{coefficients} \hlopt{%>%}
+  \hlkwd{print}\hlstd{()}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection[2]
+
+Now we want to implement the different gradient descent algorithms.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#' Batch gradient descent}
+\hlcom{#' @param  learn_rate the step size}
+\hlcom{#' @param epochs number of iterations}
+
+\hlstd{batch_gsd} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{theta} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)),} \hlkwc{learn_rate}\hlstd{,} \hlkwc{epochs}\hlstd{) \{}
+    \hlstd{results} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlnum{0.0}\hlstd{,} \hlkwc{ncol} \hlstd{=} \hlkwd{ncol}\hlstd{(X)} \hlopt{+} \hlnum{2L}\hlstd{,} \hlkwc{nrow} \hlstd{= epochs)}
+  \hlkwd{colnames}\hlstd{(results)} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"epoch"}\hlstd{,} \hlstr{"nll"}\hlstd{,} \hlkwd{colnames}\hlstd{(X))}
+  \hlkwa{for} \hlstd{(epoch} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{epochs) \{}
+    \hlstd{gradient} \hlkwb{<-} \hlkwd{ll_grad}\hlstd{(y, X, theta)}
+    \hlstd{theta} \hlkwb{<-} \hlstd{theta} \hlopt{-} \hlstd{learn_rate} \hlopt{*} \hlstd{gradient}
+
+    \hlstd{results[epoch,} \hlstr{"epoch"}\hlstd{]} \hlkwb{<-} \hlstd{epoch}
+    \hlstd{results[epoch,} \hlstr{"nll"}\hlstd{]} \hlkwb{<-} \hlkwd{ll}\hlstd{(y, X, theta)}
+    \hlstd{results[epoch,} \hlopt{-}\hlstd{(}\hlnum{1}\hlopt{:}\hlnum{2}\hlstd{)]} \hlkwb{<-} \hlstd{theta}
+  \hlstd{\}}
+  \hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{learn_rate} \hlkwb{<-} \hlstd{learn_rate}
+  \hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{epochs} \hlkwb{<-} \hlstd{epochs}
+  \hlkwd{return}\hlstd{(results)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{stochastic_gsd} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{theta} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)),}
+                                   \hlkwc{learn_rate}\hlstd{,} \hlkwc{epochs}\hlstd{,} \hlkwc{seed}\hlstd{=}\hlnum{1337} \hlstd{)\{}
+  \hlkwd{set.seed}\hlstd{(seed)}
+  \hlstd{results} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlnum{0.0}\hlstd{,} \hlkwc{ncol} \hlstd{=} \hlkwd{ncol}\hlstd{(X)} \hlopt{+} \hlnum{2L}\hlstd{,} \hlkwc{nrow} \hlstd{= epochs)}
+  \hlkwd{colnames}\hlstd{(results)} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"epoch"}\hlstd{,} \hlstr{"nll"}\hlstd{,} \hlkwd{colnames}\hlstd{(X))}
+    \hlkwa{for} \hlstd{(epoch} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{epochs) \{}
+      \hlstd{index_order} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlkwd{length}\hlstd{(y))}
+      \hlcom{#shuffle the data by indexing in a random order}
+
+      \hlkwa{for} \hlstd{(i} \hlkwa{in} \hlstd{index_order )\{}
+    \hlstd{gradient} \hlkwb{<-} \hlkwd{ll_grad}\hlstd{(y[i], X[i,,} \hlkwc{drop}\hlstd{=}\hlnum{FALSE}\hlstd{], theta)}
+    \hlcom{#dont drop "redundant" information to keep it as a matrix}
+    \hlstd{theta} \hlkwb{<-} \hlstd{theta} \hlopt{-} \hlstd{learn_rate} \hlopt{*} \hlstd{gradient}
+      \hlstd{\}}
+    \hlstd{results[epoch,} \hlstr{"epoch"}\hlstd{]} \hlkwb{<-} \hlstd{epoch}
+    \hlstd{results[epoch,} \hlstr{"nll"}\hlstd{]} \hlkwb{<-} \hlkwd{ll}\hlstd{(y, X, theta)}
+    \hlstd{results[epoch,} \hlopt{-}\hlstd{(}\hlnum{1}\hlopt{:}\hlnum{2}\hlstd{)]} \hlkwb{<-} \hlstd{theta}
+
+    \hlstd{\}}
+  \hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{learn_rate} \hlkwb{<-} \hlstd{learn_rate}
+  \hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{epochs} \hlkwb{<-} \hlstd{epochs}
+  \hlkwd{return}\hlstd{(results)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{minibatch_gsd} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{theta} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)),}
+                          \hlkwc{sample_size}\hlstd{,} \hlkwc{learn_rate}\hlstd{,} \hlkwc{epochs}\hlstd{,}
+                          \hlkwc{batch_size}\hlstd{,} \hlkwc{seed}\hlstd{=}\hlnum{1337}\hlstd{)\{}
+  \hlkwd{set.seed}\hlstd{(seed)}
+  \hlstd{n} \hlkwb{<-} \hlkwd{length}\hlstd{(y)}
+  \hlstd{num_batches} \hlkwb{<-} \hlkwd{ceiling}\hlstd{(n}\hlopt{/}\hlstd{batch_size)}
+
+\hlstd{results} \hlkwb{<-} \hlkwd{matrix}\hlstd{(}\hlnum{0.0}\hlstd{,} \hlkwc{ncol} \hlstd{=} \hlkwd{ncol}\hlstd{(X)} \hlopt{+} \hlnum{2L}\hlstd{,} \hlkwc{nrow} \hlstd{= epochs)}
+\hlkwd{colnames}\hlstd{(results)} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"epoch"}\hlstd{,} \hlstr{"nll"}\hlstd{,} \hlkwd{colnames}\hlstd{(X))}
+
+\hlcom{# Run algorithm}
+\hlkwa{for}\hlstd{(epoch} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{epochs)\{}
+ \hlstd{index_order} \hlkwb{<-} \hlkwd{sample}\hlstd{(}\hlkwd{length}\hlstd{(y))}
+ \hlcom{#shuffle the data by indexing in a random order}
+
+\hlcom{### Put the algorithm code here ### }
+  \hlkwa{for} \hlstd{(i} \hlkwa{in} \hlnum{1}\hlopt{:}\hlstd{num_batches)\{}
+
+     \hlstd{batch_index} \hlkwb{<-} \hlkwd{which}\hlstd{(}\hlkwd{findInterval}\hlstd{(index_order,}
+                                       \hlkwd{seq}\hlstd{(}\hlnum{1}\hlstd{, n,} \hlkwc{by} \hlstd{= batch_size))} \hlopt{==} \hlstd{i)}
+     \hlcom{#which x and y  to subset for each iteration by }
+     \hlcom{#dividing indexes to different batches}
+    \hlstd{batch_X} \hlkwb{<-} \hlstd{X[batch_index,]}
+    \hlstd{batch_y} \hlkwb{<-} \hlstd{y[batch_index]}
+
+    \hlstd{gradient} \hlkwb{<-} \hlkwd{ll_grad}\hlstd{(}\hlkwc{y}\hlstd{=batch_y,} \hlkwc{X} \hlstd{= batch_X,} \hlkwc{theta}\hlstd{=theta )} \hlopt{/} \hlstd{batch_size}
+    \hlstd{theta} \hlkwb{<-} \hlstd{theta} \hlopt{-} \hlstd{learn_rate} \hlopt{*} \hlstd{gradient}
+  \hlstd{\}}
+ \hlcom{# Store epoch, nll and output results}
+\hlstd{results[epoch,} \hlstr{"epoch"}\hlstd{]} \hlkwb{<-} \hlstd{epoch}
+\hlstd{results[epoch,} \hlstr{"nll"}\hlstd{]} \hlkwb{<-} \hlkwd{ll}\hlstd{(y, X, theta)}
+\hlstd{results[epoch,} \hlopt{-}\hlstd{(}\hlnum{1}\hlopt{:}\hlnum{2}\hlstd{)]} \hlkwb{<-} \hlstd{theta}
+\hlstd{\}}
+
+\hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{learn_rate} \hlkwb{<-} \hlstd{learn_rate}
+\hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{epochs} \hlkwb{<-} \hlstd{epochs}
+\hlkwd{return}\hlstd{(results)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\subsubsection{3}
+Now we want to try different three different values of the learning parameter $\eta$ and run the algorithm for 500 epochs.
+The way the code is structured is so that the next function is a plot function given the results from one of the gradient descent functions. Then all the following functions are just there to extend the use of all the defined functions to make them more generalizable, and the results are then presented in a main function for this task.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#' Function to plot negative log likelihood and the results for one chose parameter}
+\hlcom{#' @param  para_name name of the parameter to plot results for}
+\hlcom{#' @return  plots for the negative log-likelihood as well as the parameter of interest}
+\hlcom{#'}
+\hlstd{plot_GD} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{results}\hlstd{,} \hlkwc{variable_name} \hlstd{)\{}
+  \hlstd{n_epochs} \hlkwb{<-} \hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{epochs}
+  \hlstd{learn_rate} \hlkwb{<-} \hlkwd{attributes}\hlstd{(results)}\hlopt{$}\hlstd{learn_rate}
+  \hlstd{result_df} \hlkwb{<-} \hlkwd{data.frame}\hlstd{(results)}
+ \hlstd{title_text} \hlkwb{<-} \hlkwd{bquote}\hlstd{(eta} \hlopt{==} \hlkwd{.}\hlstd{(learn_rate))}
+ \hlcom{#dot is used to insert the value of learn_rate instead of the string "learn_rate"}
+
+
+   \hlcom{#plot negative Log-likelihood}
+   \hlstd{ll_plot} \hlkwb{<-} \hlkwd{ggplot}\hlstd{(result_df,} \hlkwd{aes}\hlstd{(}\hlkwc{x}\hlstd{=epoch,} \hlkwc{y}\hlstd{=nll))} \hlopt{+} \hlkwd{geom_line}\hlstd{()} \hlopt{+}
+     \hlkwd{ylab}\hlstd{(}\hlstr{"Negative Log-Likelihood"}\hlstd{)} \hlopt{+}
+     \hlkwd{ggtitle}\hlstd{(title_text)} \hlopt{+}
+     \hlkwd{theme}\hlstd{(}\hlkwc{axis.text} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{size} \hlstd{=} \hlnum{12}\hlstd{))}
+  \hlstd{variable_plot} \hlkwb{<-}   \hlkwd{ggplot}\hlstd{(result_df,} \hlkwd{aes_string}\hlstd{(}\hlkwc{x} \hlstd{=} \hlstr{"epoch"}\hlstd{,}
+                                                  \hlkwc{y} \hlstd{= variable_name))} \hlopt{+}
+    \hlkwd{geom_line}\hlstd{()} \hlopt{+}
+    \hlkwd{geom_hline}\hlstd{(}\hlkwc{yintercept} \hlstd{=} \hlnum{0.31}\hlstd{,} \hlkwc{linetype} \hlstd{=} \hlstr{"dashed"}\hlstd{,} \hlkwc{col}\hlstd{=}\hlstr{"blue"}\hlstd{,}\hlkwc{linewidth}\hlstd{=}\hlnum{1}\hlstd{)}
+    \hlkwd{ggtitle}\hlstd{(title_text)} \hlopt{+}
+    \hlkwd{theme}\hlstd{(}\hlkwc{axis.text} \hlstd{=} \hlkwd{element_text}\hlstd{(}\hlkwc{size} \hlstd{=} \hlnum{12}\hlstd{))}
+
+   \hlstd{plots} \hlkwb{<-} \hlkwd{grid.arrange}\hlstd{(ll_plot, variable_plot,} \hlkwc{ncol}\hlstd{=}\hlnum{2}\hlstd{)}
+  \hlkwd{return}\hlstd{(plots)}
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlcom{#' wrapper functions to make the previous functions more generalized to multiple values of learn_rates}
+\hlcom{#' @param learn_rates a vector of different learning rates to try. All other arguments are the same}
+
+\hlstd{batch_gsd_multi} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{learn_rates}\hlstd{,}
+                            \hlkwc{thetas} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)),} \hlkwc{n_epochs}\hlstd{)\{}
+  \hlstd{res} \hlkwb{<-} \hlkwd{mapply}\hlstd{(}\hlkwc{FUN} \hlstd{= batch_gsd,} \hlkwc{learn_rate}\hlstd{=learn_rates,}
+                \hlkwc{MoreArgs} \hlstd{=} \hlkwd{list}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{X}\hlstd{=X,}
+                                \hlkwc{theta} \hlstd{= thetas,} \hlkwc{epochs} \hlstd{= n_epochs),}
+                \hlkwc{SIMPLIFY} \hlstd{=} \hlnum{FALSE}\hlstd{)}
+\hlkwd{return}\hlstd{(res)}
+\hlstd{\}}
+
+\hlstd{stochastic_gsd_multi} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{learn_rates}\hlstd{,}
+                                 \hlkwc{thetas} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)),} \hlkwc{n_epochs}\hlstd{,} \hlkwc{seed}\hlstd{=}\hlnum{1337}\hlstd{)\{}
+  \hlstd{res} \hlkwb{<-} \hlkwd{mapply}\hlstd{(}\hlkwc{FUN} \hlstd{= stochastic_gsd,} \hlkwc{learn_rate}\hlstd{=learn_rates,}
+                \hlkwc{MoreArgs} \hlstd{=} \hlkwd{list}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{X}\hlstd{=X,}
+                                \hlkwc{theta} \hlstd{= thetas,} \hlkwc{epochs} \hlstd{= n_epochs,}
+                                \hlkwc{seed}\hlstd{=seed),}
+                \hlkwc{SIMPLIFY} \hlstd{=} \hlnum{FALSE}\hlstd{)}
+  \hlkwd{return}\hlstd{(res)}
+\hlstd{\}}
+
+\hlstd{minibatch_gsd_multi} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{learn_rates}\hlstd{,}
+                                 \hlkwc{thetas} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)),} \hlkwc{n_epochs}\hlstd{,}
+                                \hlkwc{seed}\hlstd{=}\hlnum{1337}\hlstd{,} \hlkwc{batch_size}\hlstd{) \{}
+
+  \hlstd{res} \hlkwb{<-} \hlkwd{mapply}\hlstd{(}\hlkwc{FUN} \hlstd{= minibatch_gsd,} \hlkwc{learn_rate}\hlstd{=learn_rates,}
+                \hlkwc{MoreArgs} \hlstd{=} \hlkwd{list}\hlstd{(}\hlkwc{y}\hlstd{=y,} \hlkwc{X}\hlstd{=X,}
+                                \hlkwc{theta} \hlstd{= thetas,} \hlkwc{epochs} \hlstd{= n_epochs,}
+                                \hlkwc{seed}\hlstd{=seed,} \hlkwc{batch_size} \hlstd{= batch_size),}
+                \hlkwc{SIMPLIFY} \hlstd{=} \hlnum{FALSE}\hlstd{)}
+  \hlkwd{return}\hlstd{(res)}
+  \hlstd{\}}
+
+
+\hlcom{#' function to generalize the plot_GD function to multiple plots in the same grid}
+
+\hlstd{plot_GD_multi} \hlkwb{<-}\hlkwa{function}\hlstd{(}\hlkwc{results_list}\hlstd{,} \hlkwc{variable_name}\hlstd{)\{}
+  \hlstd{extracted_plots} \hlkwb{<-} \hlkwd{lapply}\hlstd{(results_list,} \hlkwc{FUN}\hlstd{= plot_GD,}
+                            \hlkwc{variable_name} \hlstd{= variable_name)}
+
+  \hlstd{merged_plots} \hlkwb{<-} \hlkwd{do.call}\hlstd{(grid.arrange,} \hlkwd{c}\hlstd{(extracted_plots,}
+                                          \hlkwc{nrow}\hlstd{=}\hlkwd{length}\hlstd{(extracted_plots)))}
+  \hlcom{#using grid.arrange on all extracted plots}
+  \hlkwd{return}\hlstd{(merged_plots)}
+\hlstd{\}}
+
+
+\hlkwd{plot_GD_multi}\hlstd{(}\hlkwc{results_list} \hlstd{= res,} \hlkwc{variable_name} \hlstd{=} \hlstr{"gpa_sd"}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{Task_3_main} \hlkwb{<-} \hlkwa{function}\hlstd{(}\hlkwc{y}\hlstd{,} \hlkwc{X}\hlstd{,} \hlkwc{thetas} \hlstd{=} \hlkwd{rep}\hlstd{(}\hlnum{0}\hlstd{,} \hlkwd{ncol}\hlstd{(X)) ,} \hlkwc{learn_rates}\hlstd{,}
+                        \hlkwc{n_epochs}\hlstd{,} \hlkwc{seed}\hlstd{,} \hlkwc{batch_size}\hlstd{,} \hlkwc{variable_name}\hlstd{)\{}
+
+\hlstd{batch_results} \hlkwb{<-} \hlkwd{batch_gsd_multi}\hlstd{(}\hlkwc{y} \hlstd{= y,} \hlkwc{X}\hlstd{=X,}
+                                 \hlkwc{learn_rates} \hlstd{= learn_rates[[}\hlnum{1}\hlstd{]],}
+                                 \hlkwc{n_epochs} \hlstd{=} \hlnum{500}\hlstd{,} \hlkwc{thetas}\hlstd{=thetas)}
+\hlkwd{print}\hlstd{(}\hlstr{"Ordinary GD done"}\hlstd{)}
+
+\hlstd{stochastic_results} \hlkwb{<-} \hlkwd{stochastic_gsd_multi}\hlstd{(}\hlkwc{y} \hlstd{= y,} \hlkwc{X}\hlstd{=X,}
+                                           \hlkwc{learn_rates} \hlstd{= learn_rates[[}\hlnum{2}\hlstd{]],}
+                                           \hlkwc{n_epochs} \hlstd{= n_epochs,} \hlkwc{seed}\hlstd{=seed)}
+\hlkwd{print}\hlstd{(}\hlstr{"Stochastic GD done"}\hlstd{)}
+
+\hlstd{minibatch_results} \hlkwb{<-}  \hlkwd{minibatch_gsd_multi}\hlstd{(}\hlkwc{y} \hlstd{= y,} \hlkwc{X}\hlstd{=X,}
+                                          \hlkwc{learn_rates} \hlstd{= learn_rates[[}\hlnum{3}\hlstd{]],}
+                                          \hlkwc{n_epochs} \hlstd{= n_epochs,}
+                                          \hlkwc{batch_size}\hlstd{=batch_size,}
+                                          \hlkwc{seed}\hlstd{=seed)}
+\hlkwd{print}\hlstd{(}\hlstr{"Minibatch GD done"}\hlstd{)}
+\hlstd{batch_plots} \hlkwb{<-} \hlkwd{plot_GD_multi}\hlstd{(batch_results,}
+                             \hlkwc{variable_name} \hlstd{= variable_name)}
+\hlstd{stochastic_plots} \hlkwb{<-} \hlkwd{plot_GD_multi}\hlstd{(stochastic_results,}
+                                  \hlkwc{variable_name} \hlstd{= variable_name)}
+\hlstd{minibatch_plots} \hlkwb{<-} \hlkwd{plot_GD_multi}\hlstd{(minibatch_results,}
+                                 \hlkwc{variable_name} \hlstd{= variable_name)}
+\hlstd{list_results} \hlkwb{<-} \hlkwd{list}\hlstd{(}\hlkwc{batch_GD} \hlstd{=batch_plots,}
+                     \hlkwc{stochastic_GD} \hlstd{= stochastic_plots,}
+                     \hlkwc{minibatch_GD} \hlstd{= minibatch_plots)}
+
+\hlkwd{return}\hlstd{(list_results)}
+
+\hlstd{plots} \hlkwb{<-} \hlkwd{Task_3_main}\hlstd{(}\hlkwc{y}\hlstd{=y,}\hlkwc{X}\hlstd{=X,} \hlkwc{learn_rates} \hlstd{=} \hlkwd{list}\hlstd{(}\hlkwd{c}\hlstd{(}\hlnum{0.03}\hlstd{,}\hlnum{1}\hlstd{,}\hlnum{7}\hlstd{),}
+                                                 \hlkwd{c}\hlstd{(}\hlnum{0.0001}\hlstd{,} \hlnum{0.001}\hlstd{,} \hlnum{1}\hlstd{),}
+                                                 \hlkwd{c}\hlstd{(}\hlnum{0.05}\hlstd{,}\hlnum{1}\hlstd{,}\hlnum{10}\hlstd{)),}
+                     \hlkwc{n_epochs}\hlstd{=}\hlnum{500}\hlstd{,} \hlkwc{seed}\hlstd{=}\hlnum{1337}\hlstd{,}
+                     \hlkwc{batch_size} \hlstd{=} \hlnum{25}\hlstd{,}
+                     \hlkwc{variable_name} \hlstd{=} \hlstr{"gre_sd"}\hlstd{)}
+
+\hlstd{\}}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{plot}\hlstd{(plots}\hlopt{$}\hlstd{batch_GD)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{plot}\hlstd{(plots}\hlopt{$}\hlstd{stochastic_GD)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{plot}\hlstd{(plots}\hlopt{$}\hlstd{minibatch_GD)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+
+
+\end{document}
